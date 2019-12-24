@@ -8,17 +8,10 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
 
     final TreeMap<String, Elemento> registeredList;
 
-    final TreeMap<String, Integer> pointsClassification;
-    public ImplRemoteRegistration() throws RemoteException {
+    public ImplRemoteRegistration(TreeMap<String,Elemento> albero) throws RemoteException {
 
-        registeredList = new TreeMap<>(new Comparator<String>() {
-            @Override
-            public int compare(String s1, String s2) {
-                return s1.compareTo(s2);
-            }
-        });
+        registeredList = albero;
 
-        pointsClassification = new TreeMap<>();
     }
 
     public int registra(String username, String password) throws RemoteException {
@@ -27,14 +20,8 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
         synchronized (registeredList) {
             if (registeredList.containsKey(username)) return -1;
 
-            registeredList.put(username, new Elemento(username, password));
+            registeredList.put(username, new Elemento(username, password,0));
         }
-
-        synchronized (pointsClassification) {
-            pointsClassification.put(username,0);
-
-        }
-
         return 1;
     }
 
