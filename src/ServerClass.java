@@ -3,6 +3,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.file.Files;
@@ -29,6 +30,14 @@ public class ServerClass {
                 return s1.compareTo(s2);
             }
         });
+
+        TreeMap<String, SocketAddress> usersList = new TreeMap<>(new Comparator<String>() {
+            @Override
+            public int compare(String s1, String s2) {
+                return s1.compareTo(s2);
+            }
+        });
+
         Path path = Paths.get(".");
         Path JsonNioPath = path.resolve(fileJsonName);
         if(Files.exists(JsonNioPath)){
@@ -68,7 +77,7 @@ public class ServerClass {
         }
 
 
-        Thread thread = new Thread(new ServerService(port,registeredList,fileJsonName));
+        Thread thread = new Thread(new ServerService(port,registeredList,usersList,fileJsonName));
 
         thread.start();
 
@@ -81,7 +90,6 @@ public class ServerClass {
             }
 
         }
-
 
         try {
             thread.interrupt();

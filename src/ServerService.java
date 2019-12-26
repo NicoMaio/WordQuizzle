@@ -11,6 +11,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class ServerService implements Runnable {
 
@@ -18,11 +21,16 @@ public class ServerService implements Runnable {
     private String fileJsonName;
     private int port;
     private TreeMap<String,Elemento> registeredList;
+    private TreeMap<String,SocketAddress> usersList;
+    private ThreadPoolExecutor threadPoolExecutor;
 
-    public ServerService(int port, TreeMap<String,Elemento> albero, String fileJsonName) {
+    public ServerService(int port, TreeMap<String,Elemento> albero,TreeMap<String,SocketAddress> online, String fileJsonName) {
         this.port = port;
         registeredList = albero;
         this.fileJsonName = fileJsonName;
+        usersList = online;
+        LinkedBlockingQueue<Runnable> linkedlist = new LinkedBlockingQueue<>();
+        threadPoolExecutor = new ThreadPoolExecutor(0,5,500, TimeUnit.MILLISECONDS,linkedlist);
     }
 
 
@@ -53,6 +61,8 @@ public class ServerService implements Runnable {
 
         } catch (IOException e) {
             e.printStackTrace();
+            saveUsersStats(registeredList);
+
             return;
         }
 
@@ -79,25 +89,30 @@ public class ServerService implements Runnable {
 
                         // accetto connessione
                         ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                        server.configureBlocking(false);
+
                         SocketChannel client = server.accept();
 
                         // imposto connessione non bloccante
-                        client.configureBlocking(false);
+                       // client.configureBlocking(false);
 
-                        // registro OP_READ key
-                        SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
-                        clientkey.attach(new Con());
+                        // registro OP_READ ke
+                        if(client != null) {
+                            SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
+                            clientkey.attach(new Con());
+                        }
+
 
                     }
 
                     // se chiave è Readable
                     if (key.isReadable()) {
 
-                        // tryRead(key);
+                        tryRead(key);
 
                     } else if (key.isWritable()) {
 
-                        // tryWrite(key);
+                        tryWrite(key);
                     }
                 }
 
@@ -111,26 +126,93 @@ public class ServerService implements Runnable {
         try {
             selector.close();
             serverChannel.close();
+
+            threadPoolExecutor.shutdown();
+            while(!threadPoolExecutor.isTerminated()){
+
+                try {
+                    threadPoolExecutor.awaitTermination(Long.MAX_VALUE,TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
             saveUsersStats(registeredList);
         }catch ( IOException e) {
+            saveUsersStats(registeredList);
+
         }
 
         System.out.println("Chiusura ServerService ...");
 
     }
 
-    class Con {
+    public class Con {
 
         ByteBuffer req;
         ByteBuffer resp;
         SocketAddress sa;
+        int typeOp;
 
         public Con() {
+            typeOp = -1;
             req = ByteBuffer.allocate(BUF_SZ);
+        }
+
+        public void clearAll(){
+            req.clear();
+            resp.clear();
+            typeOp = -1;
         }
     }
 
 
+    private void tryRead(SelectionKey key){
+
+        // seleziono channel e leggo
+        SocketChannel client = (SocketChannel) key.channel();
+        Con con = (Con) key.attachment();
+
+        try {
+            con.sa = client.getRemoteAddress();
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        con.req.clear();
+
+        int bytes= 0;
+        try {
+            bytes= client.read(con.req);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        if(bytes >0) {
+
+            Worker work = new Worker(con, registeredList, usersList,key);
+            threadPoolExecutor.execute(work);
+
+        }
+    }
+
+    private void tryWrite(SelectionKey key){
+
+        // seleziono channel e scrivo
+        SocketChannel client = (SocketChannel)key.channel();
+        Con con =(Con)key.attachment();
+
+        int writes = 0;
+        try {
+           writes= client.write(con.resp);
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+
+        con.clearAll();
+        key.attach(con);
+        key.interestOps(SelectionKey.OP_READ);
+
+    }
 
     private void saveUsersStats(TreeMap<String,Elemento> registeredList){
 
