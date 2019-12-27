@@ -155,6 +155,12 @@ public class ServerService implements Runnable {
         ByteBuffer req;
         ByteBuffer resp;
         SocketAddress sa;
+
+        /*
+        *   type 1 = login
+        *   type 2 = logout
+        *
+        * */
         int typeOp;
 
         public Con() {
@@ -195,10 +201,6 @@ public class ServerService implements Runnable {
 
             Worker work = new Worker(con, registeredList, usersList,key);
             threadPoolExecutor.execute(work);
-
-            //key.interestOps(SelectionKey.OP_WRITE);
-
-
         }
     }
 
@@ -220,9 +222,12 @@ public class ServerService implements Runnable {
         if(writes>0) {
             System.out.println("WRITE");
 
-
-            key.attach(new Con());
-            key.interestOps(SelectionKey.OP_READ);
+            if(con.typeOp != 2) {
+                key.attach(new Con());
+                key.interestOps(SelectionKey.OP_READ);
+            } else {
+                key.cancel();
+            }
         }
     }
 
