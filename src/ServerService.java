@@ -112,9 +112,11 @@ public class ServerService implements Runnable {
                         }catch (Exception e){
                             e.printStackTrace();
                         }
+                        //key.interestOps(SelectionKey.OP_WRITE);
                     } else if (key.isWritable()) {
 
                         tryWrite(key);
+
                     }
                 }
 
@@ -192,10 +194,8 @@ public class ServerService implements Runnable {
         if(bytes >0) {
 
             Worker work = new Worker(con, registeredList, usersList,key);
-            //threadPoolExecutor.execute(work);
-            Thread t = new Thread(work);
-            t.start();
-            //t.join();
+            threadPoolExecutor.execute(work);
+
             //key.interestOps(SelectionKey.OP_WRITE);
 
 
@@ -206,10 +206,11 @@ public class ServerService implements Runnable {
 
         // seleziono channel e scrivo
         SocketChannel client = (SocketChannel)key.channel();
-        Con con =(Con)key.attachment();
+        Con con =(Con) key.attachment();
 
         int writes = 0;
-        con.resp.flip();
+        System.out.println("QUI2");
+
 
         try {
            writes= client.write(con.resp);
@@ -219,8 +220,8 @@ public class ServerService implements Runnable {
         if(writes>0) {
             System.out.println("WRITE");
 
-            con.clearAll();
-            key.attach(con);
+
+            key.attach(new Con());
             key.interestOps(SelectionKey.OP_READ);
         }
     }

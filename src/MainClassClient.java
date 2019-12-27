@@ -2,6 +2,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
@@ -46,53 +47,45 @@ public class MainClassClient {
 
        // while (true){
 
-            String input = "login/Michele/Superman";
+        String input = "login/Michele/Superman";
 
-            ByteBuffer buffer = ByteBuffer.wrap(input.getBytes());
+        ByteBuffer buffer = ByteBuffer.wrap(input.getBytes());
 
-            client.write(buffer);
-            buffer.clear();
-            buffer.flip();
+        client.write(buffer);
+        buffer.clear();
+        buffer.flip();
 
-            String response="";
-
-            boolean stop = false;
-            int readyBytes;
-            buffer = ByteBuffer.allocate(1024);
-            while(!stop){
-                buffer.clear();
-                readyBytes = client.read(buffer);
-                System.out.println("QUI");
-                buffer.flip();
-                response += new String(buffer.array());
-
-                System.out.println(response);
-                System.out.println(readyBytes);
-
-                switch (response){
-                    case "-2":
-                        System.out.println("Utente non è registrato");
-                        stop=true;
-                        break;
-                    case "-1":
-                        System.out.println("Password errata");
-                        stop=true;
-
-                        break;
-                    case "0":
-                        System.out.println("Login già effettuato");
-                        stop=true;
-
-                        break;
-                    case "1":
-                        System.out.println("Login ok");
-                        stop=true;
-
-                        break;
-                }
-            }
-      //  }
+        String response="";
 
 
+        ByteBuffer fer = ByteBuffer.allocate(1024);
+
+        client.read(fer);
+        fer.flip();
+
+        response +=StandardCharsets.UTF_8.decode(fer).toString();
+
+
+
+        System.out.println(response);
+
+        switch (response){
+            case "-2":
+                System.out.println("Utente non è registrato");
+                break;
+            case "-1":
+                System.out.println("Password errata");
+
+                break;
+            case "0":
+                System.out.println("Login già effettuato");
+
+                break;
+            case "1":
+                System.out.println("Login ok");
+
+                break;
+        }
     }
+
 }

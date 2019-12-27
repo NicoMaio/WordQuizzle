@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -79,19 +80,12 @@ public class Worker implements Runnable {
                     // salvo risposta per client in con.resp
                     con.typeOp = 1;
                     con.resp = ByteBuffer.wrap(response.getBytes());
-                    key.attach(con);
 
-                    // aggiungo OP_WRITE
-                    con.resp.flip();
+
+
                     System.out.println(new String(con.resp.array()));
-                    SocketChannel client = (SocketChannel)key.channel();
-                    try {
-                        client.write(con.resp);
-                        System.out.println("QUI");
-                    }catch (Exception e){
-                        e.printStackTrace();
-                    }
-                    //key.interestOps(SelectionKey.OP_WRITE);
+                    key.attach(con);
+                    key.interestOps(SelectionKey.OP_WRITE);
                 break;
                 case "logout": // typeOp 2
                     break;
