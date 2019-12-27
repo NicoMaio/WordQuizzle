@@ -1,17 +1,18 @@
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 
 public class Worker implements Runnable {
 
-    private final TreeMap<String,Elemento> registeredList;
+    private final TreeMap<String, Utente> registeredList;
     private TreeMap<String, SocketAddress> usersList;
     private ServerService.Con con;
     private SelectionKey key;
 
-    public Worker(ServerService.Con con,TreeMap<String,Elemento> registeredList,
+    public Worker(ServerService.Con con,TreeMap<String, Utente> registeredList,
                   TreeMap<String, SocketAddress> usersList,SelectionKey key) {
         this.con  = con;
         this.registeredList = registeredList;
@@ -24,65 +25,74 @@ public class Worker implements Runnable {
 
         con.req.flip();
         String receive = StandardCharsets.UTF_8.decode(con.req).toString();
-
+        System.out.println("ecco stringa ricevuta: "+receive);
         String[] elenco = receive.split("/");
 
         if(elenco.length >0){
             switch (elenco[0]){
                 case "login" : // typeOp 1
-                        String username = elenco[1];
-                        String password = elenco[2];
+                    String username = elenco[1];
+                    String password = elenco[2];
 
-                        Elemento utente= null;
-                        synchronized (registeredList) {
-                            if (registeredList.containsKey(username)) {
-                                utente = registeredList.get(username);
-                            }
+                    Utente utente= null;
+                    synchronized (registeredList) {
+                        if (registeredList.containsKey(username)) {
+                            utente = registeredList.get(username);
                         }
-                        String response="";
-                        /*
-                        *   response = 0 : login già effettuato;
-                        *   response = 1 : login ok;
-                        *   response = -1 : password sbagliata;
-                        *   responde = -2 : utente non registrato;
-                        * */
-                        if(utente!=null){
-                            if(password.equals(utente.getPassword())){
-                                boolean ok=false;
-                                synchronized (usersList){
-                                    if(usersList.containsKey(utente.getUsername())){
-                                        ok = true;
-                                    } else {
-                                        usersList.put(username,con.sa);
-                                    }
-                                }
-
-                                if(ok){
-                                    // login già effettuato
-
-                                    response += "0";
-
+                    }
+                    String response="";
+                    /*
+                    *   response = 0 : login già effettuato;
+                    *   response = 1 : login ok;
+                    *   response = -1 : password sbagliata;
+                    *   responde = -2 : utente non registrato;
+                    * */
+                    if(utente!=null){
+                        if(password.equals(utente.getPassword())){
+                            boolean ok=false;
+                            synchronized (usersList){
+                                if(usersList.containsKey(utente.getUsername())){
+                                    ok = true;
                                 } else {
-                                    // login ok
-                                    response+= "1";
+                                    usersList.put(username,con.sa);
                                 }
+                            }
+
+                            if(ok){
+                                // login già effettuato
+
+                                response += "0";
+
                             } else {
-                                // password sbagliata
-                                response+= "-1";
+                                // login ok
+                                response+= "1";
                             }
                         } else {
-                            // utente non è registrato
-                            response+= "2";
+                            // password sbagliata
+                            response+= "-1";
                         }
+                    } else {
+                        // utente non è registrato
+                        response+= "-2";
+                    }
 
-                        // salvo risposta per client in con.resp
-                        con.typeOp = 1;
-                        con.resp = ByteBuffer.wrap(response.getBytes());
-                        key.attach(con);
+                    // salvo risposta per client in con.resp
+                    con.typeOp = 1;
+                    con.resp = ByteBuffer.wrap(response.getBytes());
+                    key.attach(con);
 
-                        // aggiungo OP_WRITE
-                        key.interestOps(SelectionKey.OP_WRITE);
-                    break;
+                    // aggiungo OP_WRITE
+                    con.resp.flip();
+                    System.out.println(new String(con.resp.array()));
+                    SocketChannel client = (SocketChannel)key.channel();
+                    try {
+                        client.write(con.resp);
+                        System.out.println("QUI");
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
+                    //key.interestOps(SelectionKey.OP_WRITE);
+                break;
                 case "logout": // typeOp 2
                     break;
                 case "lista_amici":
@@ -95,8 +105,11 @@ public class Worker implements Runnable {
                     break;
                 case "sfida":
                     break;
+                default:
+                    break;
             }
         }
+        return;
     }
 
 }

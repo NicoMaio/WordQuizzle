@@ -1,14 +1,13 @@
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Comparator;
 import java.util.TreeMap;
 
 
 public class ImplRemoteRegistration extends UnicastRemoteObject implements RemoteRegistration {
 
-    final TreeMap<String, Elemento> registeredList;
+    final TreeMap<String, Utente> registeredList;
 
-    public ImplRemoteRegistration(TreeMap<String,Elemento> albero) throws RemoteException {
+    public ImplRemoteRegistration(TreeMap<String, Utente> albero) throws RemoteException {
 
         registeredList = albero;
 
@@ -20,7 +19,7 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
         synchronized (registeredList) {
             if (registeredList.containsKey(username)) return -1;
 
-            registeredList.put(username, new Elemento(username, password,0));
+            registeredList.put(username, new Utente(username, password,0));
         }
         return 1;
     }

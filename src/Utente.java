@@ -3,16 +3,16 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
 
-public class Elemento {
+public class Utente {
 
     private String username;
 
-    private int point;
+    private long point;
     private String password;
 
     private Vector<String> friends;
 
-    public Elemento(String username, String password,int point) {
+    public Utente(String username, String password, long point) {
 
         this.username = username;
         this.password = password;
@@ -36,7 +36,7 @@ public class Elemento {
         this.point = this.point+point;
     }
 
-    public int getPoint(){
+    public long getPoint(){
         return point;
     }
 

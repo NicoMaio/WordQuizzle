@@ -20,11 +20,11 @@ public class ServerService implements Runnable {
     private static int BUF_SZ = 1024;
     private String fileJsonName;
     private int port;
-    private TreeMap<String,Elemento> registeredList;
+    private TreeMap<String, Utente> registeredList;
     private TreeMap<String,SocketAddress> usersList;
     private ThreadPoolExecutor threadPoolExecutor;
 
-    public ServerService(int port, TreeMap<String,Elemento> albero,TreeMap<String,SocketAddress> online, String fileJsonName) {
+    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SocketAddress> online, String fileJsonName) {
         this.port = port;
         registeredList = albero;
         this.fileJsonName = fileJsonName;
@@ -89,12 +89,12 @@ public class ServerService implements Runnable {
 
                         // accetto connessione
                         ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                        server.configureBlocking(false);
+                        //server.configureBlocking(false);
 
                         SocketChannel client = server.accept();
 
                         // imposto connessione non bloccante
-                       // client.configureBlocking(false);
+                        client.configureBlocking(false);
 
                         // registro OP_READ ke
                         if(client != null) {
@@ -107,9 +107,11 @@ public class ServerService implements Runnable {
 
                     // se chiave è Readable
                     if (key.isReadable()) {
-
-                        tryRead(key);
-
+                        try {
+                            tryRead(key);
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
                     } else if (key.isWritable()) {
 
                         tryWrite(key);
@@ -166,7 +168,7 @@ public class ServerService implements Runnable {
     }
 
 
-    private void tryRead(SelectionKey key){
+    private void tryRead(SelectionKey key) throws Exception{
 
         // seleziono channel e leggo
         SocketChannel client = (SocketChannel) key.channel();
@@ -190,7 +192,12 @@ public class ServerService implements Runnable {
         if(bytes >0) {
 
             Worker work = new Worker(con, registeredList, usersList,key);
-            threadPoolExecutor.execute(work);
+            //threadPoolExecutor.execute(work);
+            Thread t = new Thread(work);
+            t.start();
+            //t.join();
+            //key.interestOps(SelectionKey.OP_WRITE);
+
 
         }
     }
@@ -202,28 +209,32 @@ public class ServerService implements Runnable {
         Con con =(Con)key.attachment();
 
         int writes = 0;
+        con.resp.flip();
+
         try {
            writes= client.write(con.resp);
         } catch (IOException e){
             e.printStackTrace();
         }
+        if(writes>0) {
+            System.out.println("WRITE");
 
-        con.clearAll();
-        key.attach(con);
-        key.interestOps(SelectionKey.OP_READ);
-
+            con.clearAll();
+            key.attach(con);
+            key.interestOps(SelectionKey.OP_READ);
+        }
     }
 
-    private void saveUsersStats(TreeMap<String,Elemento> registeredList){
+    private void saveUsersStats(TreeMap<String, Utente> registeredList){
 
-        Set<Map.Entry<String,Elemento>> set = registeredList.entrySet();
-        Iterator<Map.Entry<String,Elemento>> iterator=    set.iterator();
+        Set<Map.Entry<String, Utente>> set = registeredList.entrySet();
+        Iterator<Map.Entry<String, Utente>> iterator=    set.iterator();
 
         JSONArray array= new JSONArray();
 
         while(iterator.hasNext()){
             JSONObject obj = new JSONObject();
-            Elemento temp = iterator.next().getValue();
+            Utente temp = iterator.next().getValue();
             obj.put("username",temp.getUsername());
             obj.put("password",temp.getPassword());
             obj.put("points",temp.getPoint());

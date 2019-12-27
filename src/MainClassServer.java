@@ -15,16 +15,17 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.*;
 
-public class ServerClass {
+public class MainClassServer {
 
     public static int DEFAULT_PORT = 13200;
     public static String fileJsonName = "BackupServer.json";
+    public static int PORT_FOR_RSERVICE = 9999;
 
     public static void main(String[] args){
         // ServerClass [port]
         // [port]: numero di porta su cui il server resta in attesa
 
-        TreeMap<String,Elemento> registeredList = new TreeMap<>(new Comparator<String>() {
+        TreeMap<String, Utente> registeredList = new TreeMap<>(new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
                 return s1.compareTo(s2);
@@ -56,9 +57,9 @@ public class ServerClass {
 
 
             ImplRemoteRegistration register = new ImplRemoteRegistration(registeredList);
-            LocateRegistry.createRegistry(9999);
+            LocateRegistry.createRegistry(PORT_FOR_RSERVICE);
 
-            Registry r = LocateRegistry.getRegistry(9999);
+            Registry r = LocateRegistry.getRegistry(PORT_FOR_RSERVICE);
             r.rebind(ImplRemoteRegistration.SERVICE_NAME, register);
         } catch ( RemoteException r ){
             r.printStackTrace();
@@ -126,7 +127,7 @@ public class ServerClass {
         return result;
     }
 
-    public static void buildRegistered(TreeMap<String,Elemento> registeredList, String result){
+    public static void buildRegistered(TreeMap<String, Utente> registeredList, String result){
 
         JSONArray jsonArray;
         JSONParser parser = new JSONParser();
@@ -140,15 +141,15 @@ public class ServerClass {
                 JSONObject obj = iterator.next();
                 String username =(String)obj.get("username");
                 String password =(String)obj.get("password");
-                int point = (Integer)obj.get("points");
+                Long point = (Long)obj.get("points");
 
-                Elemento elemento = new Elemento(username,password,point);
+                Utente utente = new Utente(username,password,point);
                 JSONArray listaF = (JSONArray)obj.get("friends");
                 Iterator<JSONObject> iterator1 = listaF.iterator();
                 while(iterator1.hasNext()){
-                    elemento.setFriend(iterator1.next().get("username").toString());
+                    utente.setFriend(iterator1.next().get("username").toString());
                 }
-                registeredList.put(elemento.getUsername(),elemento);
+                registeredList.put(utente.getUsername(), utente);
 
             }
         }catch (ParseException e){
