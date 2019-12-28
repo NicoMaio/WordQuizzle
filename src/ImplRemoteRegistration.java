@@ -21,6 +21,9 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
 
             registeredList.put(username, new Utente(username, password,0));
         }
+
+        ServerService.saveUsersStats(registeredList);
+
         return 1;
     }
 

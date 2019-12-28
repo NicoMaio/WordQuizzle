@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class ServerService implements Runnable {
 
     private static int BUF_SZ = 1024;
-    private String fileJsonName;
+    private static String fileJsonName;
     private int port;
     private TreeMap<String, Utente> registeredList;
     private TreeMap<String,SocketAddress> usersList;
@@ -231,9 +231,12 @@ public class ServerService implements Runnable {
         }
     }
 
-    private void saveUsersStats(TreeMap<String, Utente> registeredList){
+    public static void saveUsersStats(TreeMap<String, Utente> registeredList){
 
-        Set<Map.Entry<String, Utente>> set = registeredList.entrySet();
+        Set<Map.Entry<String, Utente>> set;
+        synchronized (registeredList) {
+            set = registeredList.entrySet();
+        }
         Iterator<Map.Entry<String, Utente>> iterator=    set.iterator();
 
         JSONArray array= new JSONArray();

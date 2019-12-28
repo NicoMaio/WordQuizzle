@@ -213,6 +213,7 @@ public class Worker implements Runnable {
                     } catch (IOException e){
                         e.printStackTrace();
                     }
+                    ServerService.saveUsersStats(registeredList);
                 break;
                 case "mostra_punteggio":
                     String ute = elenco[1];
