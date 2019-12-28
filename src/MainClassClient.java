@@ -36,6 +36,8 @@ public class MainClassClient {
 
         int x =registration.registra("Michele","Superman");
 
+        registration.registra("Francesco","Illegale");
+
         if(x == -1)System.out.println("Utente Michele già registrato");
 
         // stabilisco connessione con server.
@@ -86,6 +88,64 @@ public class MainClassClient {
 
                 break;
         }
+
+        String input3 = "lista_amici/Michele";
+        buffer = ByteBuffer.wrap(input3.getBytes());
+        client.write(buffer);
+
+        fer = ByteBuffer.allocate(1024);
+        client.read(fer);
+
+        fer.flip();
+        String risposta = ""+StandardCharsets.UTF_8.decode(fer).toString();
+
+        System.out.println(risposta);
+
+
+        input3 = "mostra_punteggio/Michele";
+        buffer = ByteBuffer.wrap(input3.getBytes());
+        client.write(buffer);
+
+        fer = ByteBuffer.allocate(1024);
+        client.read(fer);
+
+        fer.flip();
+        risposta = ""+StandardCharsets.UTF_8.decode(fer).toString();
+        System.out.println(risposta);
+
+
+        input3 = "mostra_classifica/Michele";
+        buffer = ByteBuffer.wrap(input3.getBytes());
+        client.write(buffer);
+
+        fer = ByteBuffer.allocate(1024);
+        client.read(fer);
+
+        fer.flip();
+        risposta = ""+StandardCharsets.UTF_8.decode(fer).toString();
+
+        System.out.println(risposta);
+
+        String input2 = "logout/Michele";
+
+        ByteBuffer buffer2 = ByteBuffer.wrap(input2.getBytes());
+
+        client.write(buffer2);
+
+        ByteBuffer fer2 = ByteBuffer.allocate(1024);
+        client.read(fer2);
+        fer2.flip();
+        String resp =""+ StandardCharsets.UTF_8.decode(fer2).toString();
+
+        switch(resp){
+            case "1":
+                System.out.println("logout ok");
+                break;
+            case "-1":
+                System.out.println("logout not ok");
+                break;
+        }
+
     }
 
 }

@@ -115,7 +115,7 @@ public class ServerService implements Runnable {
                         //key.interestOps(SelectionKey.OP_WRITE);
                     } else if (key.isWritable()) {
 
-                        tryWrite(key);
+                        makeWrite(key);
 
                     }
                 }
@@ -204,30 +204,18 @@ public class ServerService implements Runnable {
         }
     }
 
-    private void tryWrite(SelectionKey key){
+    public static void tryWrite(SelectionKey key){
 
-        // seleziono channel e scrivo
-        SocketChannel client = (SocketChannel)key.channel();
-        Con con =(Con) key.attachment();
+        key.interestOps(SelectionKey.OP_WRITE);
+    }
 
-        int writes = 0;
-        System.out.println("QUI2");
-
-
-        try {
-           writes= client.write(con.resp);
-        } catch (IOException e){
+    private void makeWrite(SelectionKey key){
+        SocketChannel client =(SocketChannel) key.channel();
+        Con con = (Con) key.attachment();
+        try{
+            client.write(con.resp);
+        }catch (IOException e){
             e.printStackTrace();
-        }
-        if(writes>0) {
-            System.out.println("WRITE");
-
-            if(con.typeOp != 2) {
-                key.attach(new Con());
-                key.interestOps(SelectionKey.OP_READ);
-            } else {
-                key.cancel();
-            }
         }
     }
 
@@ -237,7 +225,7 @@ public class ServerService implements Runnable {
         synchronized (registeredList) {
             set = registeredList.entrySet();
         }
-        Iterator<Map.Entry<String, Utente>> iterator=    set.iterator();
+        Iterator<Map.Entry<String, Utente>> iterator= set.iterator();
 
         JSONArray array= new JSONArray();
 

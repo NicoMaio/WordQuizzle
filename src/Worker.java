@@ -90,6 +90,8 @@ public class Worker implements Runnable {
                     //key.attach(con);
                     //key.interestOps(SelectionKey.OP_WRITE);
 
+                    //key.attach(con);
+                    //ServerService.tryWrite(key);
 
                     try {
                         client.write(con.resp);
@@ -258,7 +260,8 @@ public class Worker implements Runnable {
                     while(iterator.hasNext()){
                         JSONObject obj = new JSONObject();
                         Map.Entry<String,Long> next = iterator.next();
-                        obj.put(next.getKey(),next.getValue());
+                        obj.put("username",next.getKey());
+                        obj.put("points",next.getValue());
                         array.add(obj);
                     }
 
@@ -272,6 +275,47 @@ public class Worker implements Runnable {
                     }
                 break;
                 case "sfida":
+                    String uo = elenco[1];
+                    String friend = elenco[2];
+
+                    int isafriend = 1;
+                    synchronized (registeredList){
+                        if(!registeredList.get(uo).getFriends().contains(friend)){
+                            isafriend = 0;
+                        }
+                    }
+
+                    if(isafriend == 0){
+                        // invio messaggio d'errore e termino
+                    } else {
+                        // invio sfida ad amico solo se è online.
+                        // se non è online invio messaggio d'errore.
+                        int error = 1;
+                        synchronized (usersList){
+                            if(!usersList.containsKey(friend)){
+                                error = 0;
+                            }
+                        }
+
+                        if(error == 0) {
+                            // invio messaggio d'errore amico sfidato non è online
+                        } else {
+
+                            // invio richiesta ad amico
+                            // aspetto tempo T1 = 10 sec
+                            // se accetta creo lista parole
+                            // se non torna risposta entro 10 sec o rifiuta
+                            // invio messaggio d'errore.
+
+                            // se accetta dopo aver creato la lista imposto T2 = 60 sec
+                            // N = 30
+                            // K = random % 15
+                            // X: punteggio per risposta ok = +2
+                            // Y: punteggio per risposta not ok = -1
+
+                            ServerService.saveUsersStats(registeredList);
+                        }
+                    }
 
                 break;
                 default:
