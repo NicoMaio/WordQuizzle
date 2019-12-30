@@ -1,23 +1,31 @@
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.IntStream;
 
 public class Worker implements Runnable {
 
     private final TreeMap<String, Utente> registeredList;
-    private TreeMap<String, SocketAddress> usersList;
+    private TreeMap<String, SelectionKey> usersList;
     private ServerService.Con con;
     private SelectionKey key;
+    private Selector selector;
+    private SelectionKey sfidante;
+    private SelectionKey sfidato;
 
+    private static int BUF_DIM = 1024;
     public Worker(ServerService.Con con,TreeMap<String, Utente> registeredList,
-                  TreeMap<String, SocketAddress> usersList,SelectionKey key) {
+                  TreeMap<String, SelectionKey> usersList,SelectionKey key) {
         this.con  = con;
         this.registeredList = registeredList;
         this.usersList = usersList;
@@ -60,7 +68,7 @@ public class Worker implements Runnable {
                                 if(usersList.containsKey(utente.getUsername())){
                                     ok = true;
                                 } else {
-                                    usersList.put(username,con.sa);
+                                    usersList.put(username,key);
                                 }
                             }
 
@@ -277,6 +285,7 @@ public class Worker implements Runnable {
                 case "sfida":
                     String uo = elenco[1];
                     String friend = elenco[2];
+                    String respo = "";
 
                     int isafriend = 1;
                     synchronized (registeredList){
@@ -287,20 +296,118 @@ public class Worker implements Runnable {
 
                     if(isafriend == 0){
                         // invio messaggio d'errore e termino
+
+                        respo += "Utente "+friend+" non è un tuo amico.";
+
+                        con.resp = ByteBuffer.wrap(respo.getBytes());
+                        try {
+                            client.write(con.resp);
+                        } catch (IOException e){
+                            e.printStackTrace();
+                        }
                     } else {
                         // invio sfida ad amico solo se è online.
                         // se non è online invio messaggio d'errore.
                         int error = 1;
+
+                        SelectionKey amico = null;
                         synchronized (usersList){
                             if(!usersList.containsKey(friend)){
                                 error = 0;
+                            } else {
+                                amico = usersList.get(friend);
                             }
                         }
 
                         if(error == 0) {
+
                             // invio messaggio d'errore amico sfidato non è online
+                            respo += "Amico "+friend+" non è online.";
+
+                            con.resp = ByteBuffer.wrap(respo.getBytes());
+                            try {
+                                client.write(con.resp);
+                            } catch (IOException e){
+                                e.printStackTrace();
+                            }
                         } else {
 
+                            ServerService.tryWrite(key,amico);
+
+                            Random rand = new Random();
+
+                            IntStream stream = rand.ints(13200,15200);
+
+
+
+
+
+                            try {
+
+                                // inizializzo selector e datagramchannel
+                                selector = Selector.open();
+                                DatagramChannel channel = DatagramChannel.open();
+
+                                Iterator<Integer> iterator1 = stream.iterator();
+                                int port = iterator1.next();
+
+                                InetSocketAddress isa = new InetSocketAddress(port);
+
+                                try {
+                                    channel.socket().bind(isa);
+
+                                } catch (AlreadyBoundException s){
+
+                                    port = useAnotherPort(iterator1, channel);
+                                }
+
+                                respo += "Scrivi qui:"+port;
+
+                                con.resp = ByteBuffer.wrap(respo.getBytes());
+                                try {
+                                    client.write(con.resp);
+                                } catch (IOException e){
+                                    e.printStackTrace();
+                                }
+
+                                // configuro non bloccante il DatagramChannel
+                                channel.configureBlocking(false);
+
+                                SelectionKey clientkey;
+
+                                try {
+                                    clientkey = channel.register(selector,SelectionKey.OP_READ);
+                                    clientkey.attach(new auxiliar(uo,friend));
+                                } catch (ClosedChannelException cce){
+                                    cce.printStackTrace();
+                                }
+                                boolean endingSfida = false;
+                                while(!endingSfida){
+                                    selector.select();
+                                    Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
+
+                                    while(selectedKeys.hasNext()){
+                                        SelectionKey key = (SelectionKey) selectedKeys.next();
+                                        selectedKeys.remove();
+
+                                        if(!key.isValid()) continue;
+                                        if(key.isReadable()){
+                                            readUDPreq(key);
+                                        }
+                                        else if (key.isWritable()) {
+                                            sendUDPreq(key);
+                                        }
+
+                                    }
+
+                                }
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                ServerService.saveUsersStats(registeredList);
+
+                                return;
+                            }
                             // invio richiesta ad amico
                             // aspetto tempo T1 = 10 sec
                             // se accetta creo lista parole
@@ -337,5 +444,113 @@ public class Worker implements Runnable {
         );
         sortedEntries.addAll(map.entrySet());
         return sortedEntries;
+    }
+
+    public class auxiliar {
+
+        ByteBuffer req;
+        ByteBuffer resp;
+        SocketAddress sa;
+        Vector<String> wordsDatradurre;
+        String sfidante;
+        String sfidato;
+
+        /*
+         *   type 1 = login
+         *   type 2 = logout
+         *
+         * */
+
+        public auxiliar(String sfidante,String sfidato) {
+            req = ByteBuffer.allocate(BUF_DIM);
+            this.sfidante = sfidante;
+            this.sfidato = sfidato;
+        }
+
+        public void clearAll(){
+            req.clear();
+            resp.clear();
+        }
+
+        public void setWords(Vector<String> parole){
+            wordsDatradurre = parole;
+        }
+    }
+
+    private void readUDPreq(SelectionKey key) throws IOException {
+        DatagramChannel chan = (DatagramChannel) key.channel();
+        auxiliar aux = (auxiliar) key.attachment();
+        aux.sa = chan.receive(con.req);
+        // ricevo richiesta da client
+
+        // devo ricevere richieste iniziali
+
+        String req = StandardCharsets.UTF_8.decode(con.req).toString();
+        String[] elenco = req.split("/");
+        String send;
+        switch (elenco[0]){
+            case "sfidato":
+                send = "Sei stato sfidato da "+aux.sfidante+" vuoi accettare?/10";
+                aux.resp = ByteBuffer.wrap(send.getBytes());
+                key.attach(aux);
+                sfidato = key;
+
+                key.interestOps(SelectionKey.OP_WRITE);
+                break;
+            case "sfidante":
+                send = "In attesa dello sfidato: "+aux.sfidato;
+                aux.resp = ByteBuffer.wrap(send.getBytes());
+                key.attach(aux);
+                sfidante = key;
+                key.interestOps(SelectionKey.OP_WRITE);
+                break;
+            case "ok":
+                // seleziono le parole da dizionario e le traduco per iniziare sfida
+                // seleziono tempo per sfida e lo invio insieme con la prima parola,
+                // lato client settaranno il loro thread Timeout.
+                break;
+            case "not ok":
+
+                break;
+
+            case "tempo scaduto per accettare":
+                break;
+
+            case "parola":
+                break;
+        }
+
+    }
+
+    private void sendUDPreq(SelectionKey key){
+        DatagramChannel chan = (DatagramChannel) key.channel();
+        auxiliar aux = (auxiliar) key.attachment();
+
+        String risp = StandardCharsets.UTF_8.decode(aux.resp).toString();
+        if(!risp.contains("parola")){
+            try {
+                chan.send(aux.resp, aux.sa);
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+            key.interestOps(SelectionKey.OP_READ);
+        } else {
+            //
+        }
+    }
+    private int useAnotherPort(Iterator<Integer> iterator,DatagramChannel channel){
+        boolean findIt = false;
+        int nextPort =13201;
+        while(!findIt){
+            nextPort = iterator.next();
+            try {
+                InetSocketAddress isa = new InetSocketAddress(nextPort);
+
+                channel.socket().bind(isa);
+
+                findIt = true;
+            } catch (Exception a){ }
+        }
+        return nextPort;
     }
 }

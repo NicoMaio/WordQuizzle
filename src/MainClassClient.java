@@ -1,15 +1,18 @@
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 
 public class MainClassClient {
 
     private static int DEFAULT_PORT = 13200;
     private static int PORT_FOR_RSERVICE = 9999;
+    private static String host;
     public static void main(String[] args) throws Exception{
         // MainClassClient host port
         // host: nome del host Server di WordQuizzle.
@@ -20,7 +23,7 @@ public class MainClassClient {
             return;
         }
 
-        String host = args[0];
+        host = args[0];
 
         int port;
 
@@ -39,6 +42,16 @@ public class MainClassClient {
         registration.registra("Francesco","Illegale");
 
         if(x == -1)System.out.println("Utente Michele già registrato");
+
+
+        Registry registry = LocateRegistry.getRegistry(host,5000);
+        ServerInterface server = (ServerInterface) registry.lookup(ServerInterface.SERVICE_NAME);
+
+        NotifyEventInterface callbackObj = new NotifyEventImpl();
+        NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(callbackObj,0);
+        server.registerForCallback(stub);
+
+
 
         // stabilisco connessione con server.
         // configuro connessione bloccante lato server.
@@ -148,4 +161,58 @@ public class MainClassClient {
 
     }
 
+    public static void listenUDPreq(int port) throws Exception{
+
+        DatagramSocket clientSocket;
+        InetAddress IPAddress;
+
+        clientSocket = new DatagramSocket();
+        IPAddress = InetAddress.getByName(host);
+
+        byte[] receiveData = new byte[1024];
+        DatagramPacket sendPacket;
+
+        sendPacket = new DatagramPacket("sfidato".getBytes(),"sfidato".length(),IPAddress,port);
+        clientSocket.send(sendPacket);
+        DatagramPacket receivePacket = new DatagramPacket(receiveData,receiveData.length,IPAddress,port);
+
+
+        clientSocket.receive(receivePacket);
+        String ricevuta = new String(receiveData);
+
+        String[] elenco = ricevuta.split("/");
+
+        Thread timeout = new Thread(new Timeout(Long.parseLong(elenco[1])));
+        timeout.start();
+        System.out.println(new String(receiveData));
+
+        System.out.println("1. accetta sfida");
+        System.out.println("2. rifiuta sfida");
+        BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+        String in = input.readLine();
+
+        int ok=0;
+
+        if(timeout.isAlive()) {
+            switch (in) {
+                case "1":
+                    sendPacket = new DatagramPacket("ok".getBytes(), "ok".length(), IPAddress, port);
+                    clientSocket.send(sendPacket);
+                    ok = 1;
+                    break;
+                case "2":
+                    sendPacket = new DatagramPacket("not ok".getBytes(), "ok".length(), IPAddress, port);
+                    clientSocket.send(sendPacket);
+                    break;
+
+            }
+        } else {
+            sendPacket = new DatagramPacket("tempo scaduto per accettare".getBytes(), "tempo scaduto per accettare".length(), IPAddress, port);
+            clientSocket.send(sendPacket);
+        }
+
+        if(ok == 1){
+            // startChallenge(clientSocket);
+        }
+    }
 }

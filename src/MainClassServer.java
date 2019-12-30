@@ -13,6 +13,7 @@ import java.nio.file.StandardOpenOption;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
 public class MainClassServer {
@@ -32,7 +33,7 @@ public class MainClassServer {
             }
         });
 
-        TreeMap<String, SocketAddress> usersList = new TreeMap<>(new Comparator<String>() {
+        TreeMap<String, SelectionKey> usersList = new TreeMap<>(new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
                 return s1.compareTo(s2);
@@ -62,6 +63,17 @@ public class MainClassServer {
             Registry r = LocateRegistry.getRegistry(PORT_FOR_RSERVICE);
             r.rebind(ImplRemoteRegistration.SERVICE_NAME, register);
         } catch ( RemoteException r ){
+            r.printStackTrace();
+        }
+
+        try {
+            ServerCallBImpl server = new ServerCallBImpl();
+            ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(server,39000);
+            LocateRegistry.createRegistry(5000);
+            Registry registry = LocateRegistry.getRegistry(5000);
+            registry.rebind(ServerInterface.SERVICE_NAME,stub);
+
+        } catch ( RemoteException r) {
             r.printStackTrace();
         }
 

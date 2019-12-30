@@ -21,10 +21,10 @@ public class ServerService implements Runnable {
     private static String fileJsonName;
     private int port;
     private TreeMap<String, Utente> registeredList;
-    private TreeMap<String,SocketAddress> usersList;
+    private TreeMap<String,SelectionKey> usersList;
     private ThreadPoolExecutor threadPoolExecutor;
 
-    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SocketAddress> online, String fileJsonName) {
+    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online, String fileJsonName) {
         this.port = port;
         registeredList = albero;
         this.fileJsonName = fileJsonName;
@@ -204,9 +204,11 @@ public class ServerService implements Runnable {
         }
     }
 
-    public static void tryWrite(SelectionKey key){
+    public static void tryWrite(SelectionKey key1,SelectionKey key2){
 
-        key.interestOps(SelectionKey.OP_WRITE);
+        key1.interestOps(0);
+        key2.interestOps(0);
+
     }
 
     private void makeWrite(SelectionKey key){
