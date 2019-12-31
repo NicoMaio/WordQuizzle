@@ -25,6 +25,7 @@ public class ServerService implements Runnable {
     private TreeMap<String,SelectionKey> usersList;
     private ThreadPoolExecutor threadPoolExecutor;
     private static ServerCallBImpl server;
+    private static Selector selector;
 
     public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online, String fileJsonName,ServerCallBImpl server) {
         this.port = port;
@@ -42,7 +43,7 @@ public class ServerService implements Runnable {
         System.out.println("Listening for connection on port "+port+" ...");
 
         ServerSocketChannel serverChannel;
-        Selector selector;
+        //Selector selector;
 
         try {
 
@@ -207,10 +208,19 @@ public class ServerService implements Runnable {
         }
     }
 
-    public static void tryWrite(SelectionKey key1,SelectionKey key2){
+    public static void dontRead(SelectionKey key1,SelectionKey key2){
 
         key1.interestOps(0);
         key2.interestOps(0);
+
+    }
+
+    public static void abilityRead(SelectionKey key1, SelectionKey key2){
+        key1.interestOps(SelectionKey.OP_READ);
+        key2.interestOps(SelectionKey.OP_READ);
+
+
+        selector.wakeup();
 
     }
 
