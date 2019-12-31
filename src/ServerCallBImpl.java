@@ -3,34 +3,35 @@ import java.rmi.RemoteException;
 import java.rmi.server.RemoteObject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 
 public class ServerCallBImpl extends RemoteObject implements ServerInterface {
 
-    private List<NotifyEventInterface> clients;
+    private TreeMap<String,NotifyEventInterface> clients;
 
     public ServerCallBImpl() throws RemoteException {
         super();
-        clients = new ArrayList<NotifyEventInterface>();
+        clients = new TreeMap<>();
     }
 
-    public synchronized void registerForCallback(NotifyEventInterface ClientInterface) throws RemoteException {
-        if(!clients.contains(ClientInterface)){
-            clients.add(ClientInterface);
+    public synchronized void registerForCallback(String username,NotifyEventInterface ClientInterface) throws RemoteException {
+        if(!clients.containsKey(username)){
+            clients.put(username,ClientInterface);
         }
     }
 
-    public synchronized int unregisterForCallback(NotifyEventInterface Client) throws RemoteException {
-        if(clients.remove(Client) ) return 1;
+    public synchronized int unregisterForCallback(String username,NotifyEventInterface Client) throws RemoteException {
+        if(clients.remove(username,Client) ) return 1;
         return 0;
     }
 
-    public void update(int value, NotifyEventInterface Client) throws RemoteException{
-        doCallback(value,Client);
+    public void update(int value,String username) throws RemoteException{
+        doCallback(value,username);
     }
 
-    private synchronized void doCallback(int value, NotifyEventInterface Client) throws RemoteException {
-        if(clients.contains(Client)){
-            Client.notifyChallenge(value);
+    private synchronized void doCallback(int value,String username) throws RemoteException {
+        if(clients.containsKey(username)){
+            clients.get(username).notifyChallenge(value);
         }
     }
 

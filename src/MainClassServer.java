@@ -46,7 +46,7 @@ public class MainClassServer {
             String elements;
             try{
 
-                elements = readJson();
+                elements = readJson(fileJsonName);
                 buildRegistered(registeredList,elements);
 
             } catch (IOException e){
@@ -66,8 +66,9 @@ public class MainClassServer {
             r.printStackTrace();
         }
 
+        ServerCallBImpl server = null;
         try {
-            ServerCallBImpl server = new ServerCallBImpl();
+            server = new ServerCallBImpl();
             ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(server,39000);
             LocateRegistry.createRegistry(5000);
             Registry registry = LocateRegistry.getRegistry(5000);
@@ -90,7 +91,7 @@ public class MainClassServer {
         }
 
 
-        Thread thread = new Thread(new ServerService(port,registeredList,usersList,fileJsonName));
+        Thread thread = new Thread(new ServerService(port,registeredList,usersList,fileJsonName,server));
 
         thread.start();
 
@@ -116,9 +117,9 @@ public class MainClassServer {
 
     }
 
-    public static String readJson() throws IOException{
+    public static String readJson(String pat) throws IOException{
         Path path = Paths.get(".");
-        Path JsonNioPath = path.resolve(fileJsonName);
+        Path JsonNioPath = path.resolve(pat);
         String result="";
         FileChannel inChannel = FileChannel.open(JsonNioPath, StandardOpenOption.READ);
         ByteBuffer byteBufferReader = ByteBuffer.allocate(1024 * 1024);

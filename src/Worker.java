@@ -1,27 +1,34 @@
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import javax.xml.crypto.Data;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.SocketAddress;
-import java.net.SocketException;
+import java.io.InputStreamReader;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.IntStream;
 
 public class Worker implements Runnable {
 
     private final TreeMap<String, Utente> registeredList;
+    public static String dizionario = "Dizionario.json";
     private TreeMap<String, SelectionKey> usersList;
     private ServerService.Con con;
     private SelectionKey key;
     private Selector selector;
     private SelectionKey sfidante;
     private SelectionKey sfidato;
+    private int sfidat;
+    private int sfidant;
 
     private static int BUF_DIM = 1024;
     public Worker(ServerService.Con con,TreeMap<String, Utente> registeredList,
@@ -30,6 +37,9 @@ public class Worker implements Runnable {
         this.registeredList = registeredList;
         this.usersList = usersList;
         this.key = key;
+
+        sfidat = 0;
+        sfidant = 0;
     }
 
     @Override
@@ -360,7 +370,9 @@ public class Worker implements Runnable {
 
                                     port = useAnotherPort(iterator1, channel);
                                 }
+                                channel.configureBlocking(false);
 
+                                ServerService.callBack(friend,port);
                                 respo += "Scrivi qui:"+port;
 
                                 con.resp = ByteBuffer.wrap(respo.getBytes());
@@ -371,13 +383,12 @@ public class Worker implements Runnable {
                                 }
 
                                 // configuro non bloccante il DatagramChannel
-                                channel.configureBlocking(false);
 
                                 SelectionKey clientkey;
 
                                 try {
                                     clientkey = channel.register(selector,SelectionKey.OP_READ);
-                                    clientkey.attach(new auxiliar(uo,friend));
+                                    clientkey.attach(new Auxiliar(uo,friend));
                                 } catch (ClosedChannelException cce){
                                     cce.printStackTrace();
                                 }
@@ -420,6 +431,8 @@ public class Worker implements Runnable {
                             // X: punteggio per risposta ok = +2
                             // Y: punteggio per risposta not ok = -1
 
+                            // aggiorno punteggio chiudo selector e tutto e riaggiungo le chiavi
+                            // dei due sfidanti al selector TCP
                             ServerService.saveUsersStats(registeredList);
                         }
                     }
@@ -446,12 +459,13 @@ public class Worker implements Runnable {
         return sortedEntries;
     }
 
-    public class auxiliar {
+    public class Auxiliar {
 
         ByteBuffer req;
         ByteBuffer resp;
         SocketAddress sa;
         Vector<String> wordsDatradurre;
+        Vector<String> wordsTradotte;
         String sfidante;
         String sfidato;
 
@@ -461,7 +475,7 @@ public class Worker implements Runnable {
          *
          * */
 
-        public auxiliar(String sfidante,String sfidato) {
+        public Auxiliar(String sfidante,String sfidato) {
             req = ByteBuffer.allocate(BUF_DIM);
             this.sfidante = sfidante;
             this.sfidato = sfidato;
@@ -475,11 +489,15 @@ public class Worker implements Runnable {
         public void setWords(Vector<String> parole){
             wordsDatradurre = parole;
         }
+
+        public void setWordsTradotte(Vector<String> parole){
+            wordsTradotte = parole;
+        }
     }
 
     private void readUDPreq(SelectionKey key) throws IOException {
         DatagramChannel chan = (DatagramChannel) key.channel();
-        auxiliar aux = (auxiliar) key.attachment();
+        Auxiliar aux = (Auxiliar) key.attachment();
         aux.sa = chan.receive(con.req);
         // ricevo richiesta da client
 
@@ -508,23 +526,109 @@ public class Worker implements Runnable {
                 // seleziono le parole da dizionario e le traduco per iniziare sfida
                 // seleziono tempo per sfida e lo invio insieme con la prima parola,
                 // lato client settaranno il loro thread Timeout.
+
+                Random rand = new Random();
+                int K = rand.nextInt(5)+1;
+                Path path = Paths.get(".");
+                Path JsonNioPath = path.resolve(dizionario);
+                Vector<String> words = null;
+                if(Files.exists(JsonNioPath)){
+                    String elements;
+                    try{
+
+                        elements = MainClassServer.readJson(dizionario);
+                        words = takeWordsFromJson(K,elements);
+
+                    } catch (IOException e){
+                        e.printStackTrace();
+                    }
+
+                }
+
+                Auxiliar aux1 = (Auxiliar) sfidante.attachment();
+                Auxiliar aux2 = (Auxiliar) sfidato.attachment();
+
+                aux1.setWords(words);
+                aux2.setWords(words);
+
+                Vector<String> traduzioni = translateWords(words);
+
+                aux1.setWordsTradotte(traduzioni);
+                aux2.setWordsTradotte(traduzioni);
+
+                // invio tempo della sfida e prima parola ad entrambi
+
                 break;
             case "not ok":
-
+                // invio risposta allo sfidante e chiudo tutto
                 break;
 
             case "tempo scaduto per accettare":
+                // invio risposta allo sfidante e chiudo tutto
                 break;
 
             case "parola":
+                // leggo parola tradotta aggiorno punteggio e mando parola successiva
+                // se ancora non sono finite altrimenti aspetto altro utente che finisca
+                // per mandare i risultati della sfida.
                 break;
         }
 
     }
 
+    private Vector<String> translateWords(Vector<String> words){
+        Vector<String> tradotte = new Vector<>();
+
+        Iterator<String> iterator = words.iterator();
+        while(iterator.hasNext()) {
+            try {
+                URL url1 = new URL("https://api.mymemory.translated.net/get?q=" + iterator.next() + "&langpair=en|it");
+
+
+                try (BufferedReader in = new BufferedReader(new InputStreamReader(url1.openStream()))) {
+                    StringBuilder inputLine= new StringBuilder();
+                    String reader;
+                    // Read the "gpl.txt" text file from its URL representation
+                    while ((reader = in.readLine()) != null) {
+                        inputLine.append(reader);
+                    }
+
+                    JSONObject jsonObject;
+                    JSONParser parser = new JSONParser();
+
+                    try {
+                        jsonObject = (JSONObject) parser.parse(inputLine.toString());
+                        JSONObject result = (JSONObject) jsonObject.get("responseData");
+
+                        //String stampa = (String) result.get("translatedText");
+                        //System.out.println(stampa);
+
+                        JSONArray array = (JSONArray) jsonObject.get("matches");
+
+                        Iterator<JSONObject> iterator2 = array.iterator();
+                        while (iterator2.hasNext()){
+                            String stampa1 = (String)iterator2.next().get("translation");
+                            tradotte.add(stampa1);
+                        }
+                    } catch (ParseException e){
+                        e.printStackTrace();
+                    }
+
+                } catch (IOException ioe) {
+                    ioe.printStackTrace(System.err);
+                }
+            } catch (MalformedURLException mue) {
+                mue.printStackTrace(System.err);
+            }
+        }
+
+
+        return tradotte;
+    }
+
     private void sendUDPreq(SelectionKey key){
         DatagramChannel chan = (DatagramChannel) key.channel();
-        auxiliar aux = (auxiliar) key.attachment();
+        Auxiliar aux = (Auxiliar) key.attachment();
 
         String risp = StandardCharsets.UTF_8.decode(aux.resp).toString();
         if(!risp.contains("parola")){
@@ -552,5 +656,45 @@ public class Worker implements Runnable {
             } catch (Exception a){ }
         }
         return nextPort;
+    }
+
+    private Vector<String> takeWordsFromJson(int k,String json){
+        Vector<String> result = new Vector<>();
+        Vector<String> dictionary = new Vector<>();
+        JSONArray jsonArray;
+        JSONParser parser = new JSONParser();
+
+        // server per eliminare duplicati
+        List<String> listaInput = new ArrayList<>();
+
+        try{
+            jsonArray = (JSONArray) parser.parse(json);
+            // ottengo array con tutti gli utenti
+
+            Iterator<JSONObject> iterator = jsonArray.iterator();
+            while(iterator.hasNext()){
+                JSONObject obj = iterator.next();
+                String word =(String)obj.get("username");
+                dictionary.add(word);
+
+            }
+
+            while(listaInput.size()<k){
+                Random rand = new Random();
+                int index = rand.nextInt(dictionary.size());
+                result.add(dictionary.get(index));
+                listaInput = new ArrayList<String>(new LinkedHashSet<String>(result));
+
+            }
+
+            result.removeAllElements();
+
+            result.addAll(listaInput);
+
+        }catch (ParseException e){
+            e.printStackTrace();
+        }
+        return result;
+
     }
 }

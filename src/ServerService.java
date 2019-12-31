@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.rmi.RemoteException;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -23,14 +24,16 @@ public class ServerService implements Runnable {
     private TreeMap<String, Utente> registeredList;
     private TreeMap<String,SelectionKey> usersList;
     private ThreadPoolExecutor threadPoolExecutor;
+    private static ServerCallBImpl server;
 
-    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online, String fileJsonName) {
+    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online, String fileJsonName,ServerCallBImpl server) {
         this.port = port;
         registeredList = albero;
         this.fileJsonName = fileJsonName;
         usersList = online;
         LinkedBlockingQueue<Runnable> linkedlist = new LinkedBlockingQueue<>();
         threadPoolExecutor = new ThreadPoolExecutor(0,5,500, TimeUnit.MILLISECONDS,linkedlist);
+        this.server = server;
     }
 
 
@@ -275,6 +278,9 @@ public class ServerService implements Runnable {
 
     }
 
+    public static void callBack(String username,int value) throws RemoteException {
+        server.update(value,username);
+    }
 }
 
 
