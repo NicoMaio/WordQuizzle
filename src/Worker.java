@@ -402,6 +402,7 @@ public class Worker implements Runnable {
 
                                         if(!key.isValid()) continue;
                                         if(key.isReadable()){
+
                                             readUDPreq(key);
                                         }
                                         else if (key.isWritable()) {
@@ -656,12 +657,15 @@ public class Worker implements Runnable {
     private void readUDPreq(SelectionKey key) throws IOException {
         DatagramChannel chan = (DatagramChannel) key.channel();
         Auxiliar aux = (Auxiliar) key.attachment();
-        aux.sa = chan.receive(con.req);
+        aux.sa = chan.receive(aux.req);
+
         // ricevo richiesta da client
 
         // devo ricevere richieste iniziali
-
-        String req = StandardCharsets.UTF_8.decode(con.req).toString();
+        aux.req.flip();
+        aux.resp = aux.req;
+        String req = StandardCharsets.UTF_8.decode(aux.resp).toString();
+        System.out.println("ecco stringa ricevuta: "+req);
         String[] elenco = req.split("/");
         String send;
         switch (elenco[0]){
@@ -718,7 +722,7 @@ public class Worker implements Runnable {
 
                 // invio tempo della sfida e prima parola ad entrambi
 
-                String resp = "60/K/"+words.get(0);
+                String resp = "60/"+words.size()+"/"+words.get(0);
 
                 aux1.resp = ByteBuffer.wrap(resp.getBytes());
                 aux2.resp = ByteBuffer.wrap(resp.getBytes());
@@ -773,7 +777,7 @@ public class Worker implements Runnable {
                     endOne(key, temp, id);
                 } else {
                     String newWord = temp.getWord(actual+1);
-                    String response = "parola/"+actual+"/"+total+newWord;
+                    String response = "parola/"+actual+"/"+total+"/"+newWord;
                     temp.resp = ByteBuffer.wrap(response.getBytes());
                     key.attach(temp);
                     key.interestOps(SelectionKey.OP_WRITE);
@@ -862,10 +866,10 @@ public class Worker implements Runnable {
     private void sendUDPreq(SelectionKey key){
         DatagramChannel chan = (DatagramChannel) key.channel();
         Auxiliar aux = (Auxiliar) key.attachment();
-
         String risp = StandardCharsets.UTF_8.decode(aux.resp).toString();
         if(!risp.contains("parola")){
             try {
+                aux.resp.flip();
                 chan.send(aux.resp, aux.sa);
             } catch (IOException e){
                 e.printStackTrace();
@@ -874,6 +878,7 @@ public class Worker implements Runnable {
         } else if(risp.contains("sfida non accettata")){
 
             try {
+                aux.resp.flip();
                 chan.send(aux.resp, aux.sa);
             } catch (IOException e){
                 e.printStackTrace();
@@ -885,6 +890,7 @@ public class Worker implements Runnable {
             endingSfida = true;
         } else {
             try {
+                aux.resp.flip();
                 chan.send(aux.resp, aux.sa);
             } catch (IOException e){
                 e.printStackTrace();

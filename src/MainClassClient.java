@@ -49,7 +49,7 @@ public class MainClassClient {
 
         NotifyEventInterface callbackObj = new NotifyEventImpl();
         NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(callbackObj,0);
-        server.registerForCallback(stub);
+        server.registerForCallback("Michele",stub);
 
 
 
@@ -102,6 +102,46 @@ public class MainClassClient {
                 break;
         }
 
+         input = "login/Francesco/Illegale";
+
+        buffer = ByteBuffer.wrap(input.getBytes());
+
+        client.write(buffer);
+        buffer.clear();
+        buffer.flip();
+
+         response="";
+
+
+         fer = ByteBuffer.allocate(1024);
+
+        client.read(fer);
+        fer.flip();
+
+        response +=StandardCharsets.UTF_8.decode(fer).toString();
+
+
+
+        System.out.println(response);
+
+        switch (response){
+            case "-2":
+                System.out.println("Utente non è registrato");
+                break;
+            case "-1":
+                System.out.println("Password errata");
+
+                break;
+            case "0":
+                System.out.println("Login già effettuato");
+
+                break;
+            case "1":
+                System.out.println("Login ok");
+
+                break;
+        }
+
         String input3 = "lista_amici/Michele";
         buffer = ByteBuffer.wrap(input3.getBytes());
         client.write(buffer);
@@ -113,6 +153,85 @@ public class MainClassClient {
         String risposta = ""+StandardCharsets.UTF_8.decode(fer).toString();
 
         System.out.println(risposta);
+
+        input3= "sfida/Michele/Francesco";
+        buffer = ByteBuffer.wrap(input3.getBytes());
+        client.write(buffer);
+
+        fer = ByteBuffer.allocate(1024);
+        client.read(fer);
+
+        fer.flip();
+        risposta = ""+StandardCharsets.UTF_8.decode(fer).toString();
+        System.out.println(risposta);
+
+        if(risposta.contains("Scrivi")){
+            String[] lista = risposta.split(":");
+            int newport = Integer.parseInt(lista[1]);
+            System.out.println("nuova porta: "+newport);
+            DatagramSocket clientSocket;
+            InetAddress IPAddress;
+            clientSocket = new DatagramSocket();
+            IPAddress = InetAddress.getByName(host);
+
+
+            String rip = "sfidante";
+
+            byte[] sendData;
+            sendData=rip.getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(sendData,sendData.length,IPAddress,newport);
+
+            clientSocket.send(sendPacket);
+            System.out.println(new String(sendData));
+            byte[] receiveData = new byte[1024];
+
+            DatagramPacket receivePacket = new DatagramPacket(receiveData,receiveData.length,IPAddress,newport);
+            clientSocket.receive(receivePacket);
+            System.out.println("QUI");
+            System.out.println(new String(receiveData));
+
+
+            clientSocket.receive(receivePacket);
+
+            String initsfida = new String(receiveData);
+
+            String[] el = initsfida.split("/");
+            long timeout = Long.parseLong(el[0]);
+
+            int countWord = Integer.parseInt(el[1]);
+
+            String nextWord = el[2];
+            Thread time = new Thread(new Timeout(timeout));
+            time.start();
+            int i =1;
+            while(time.isAlive() && i<=countWord){
+                BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+                System.out.println(i+"/"+countWord+" : "+nextWord);
+                System.out.println("Per lasciare vuota manda spazio");
+                String risp = "parola/"+i+"/"+countWord+"/"+in.readLine();
+                sendData=risp.getBytes();
+                sendPacket = new DatagramPacket(sendData,sendData.length,IPAddress,newport);
+                clientSocket.send(sendPacket);
+
+                clientSocket.receive(receivePacket);
+                risp = new String(receiveData);
+
+                String[] sl = risp.split("/");
+
+                nextWord = sl[3];
+                i++;
+
+                in.close();
+            }
+
+            clientSocket.receive(receivePacket);
+
+            System.out.println(new String(receiveData));
+
+
+
+
+        }
 
 
         input3 = "mostra_punteggio/Michele";
@@ -138,6 +257,10 @@ public class MainClassClient {
         risposta = ""+StandardCharsets.UTF_8.decode(fer).toString();
 
         System.out.println(risposta);
+
+
+
+
 
         String input2 = "logout/Michele";
 
@@ -212,7 +335,43 @@ public class MainClassClient {
         }
 
         if(ok == 1){
-            // startChallenge(clientSocket);
+            clientSocket.receive(receivePacket);
+
+            String initsfida = new String(receiveData);
+
+            String[] el = initsfida.split("/");
+            long timeoutt = Long.parseLong(el[0]);
+
+            int countWord = Integer.parseInt(el[1]);
+
+            String nextWord = el[2];
+            Thread time = new Thread(new Timeout(timeoutt));
+            time.start();
+            int i =1;
+            while(time.isAlive() && i<=countWord){
+                BufferedReader in2 = new BufferedReader(new InputStreamReader(System.in));
+                System.out.println(i+"/"+countWord+" : "+nextWord);
+                System.out.println("Per lasciare vuota manda spazio");
+                String risp = "parola/"+i+"/"+countWord+"/"+in2.readLine();
+                sendPacket = new DatagramPacket(risp.getBytes(),risp.length(),IPAddress,port);
+                clientSocket.send(sendPacket);
+
+                clientSocket.receive(receivePacket);
+                risp = new String(receiveData);
+
+                String[] sl = risp.split("/");
+
+                nextWord = sl[3];
+                i++;
+                in2.close();
+
+            }
+
+            clientSocket.receive(receivePacket);
+
+            System.out.println(new String(receiveData));
+
+
         }
     }
 }

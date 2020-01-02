@@ -67,11 +67,12 @@ public class MainClassServer {
         }
 
         ServerCallBImpl server = null;
+        Registry registry=null;
         try {
             server = new ServerCallBImpl();
             ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(server,39000);
             LocateRegistry.createRegistry(5000);
-            Registry registry = LocateRegistry.getRegistry(5000);
+            registry = LocateRegistry.getRegistry(5000);
             registry.rebind(ServerInterface.SERVICE_NAME,stub);
 
         } catch ( RemoteException r) {
