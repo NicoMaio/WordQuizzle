@@ -372,7 +372,6 @@ public class Worker implements Runnable {
                                 }
                                 channel.configureBlocking(false);
 
-                                ServerService.callBack(friend,port);
                                 respo += "Scrivi qui:"+port;
 
                                 con.resp = ByteBuffer.wrap(respo.getBytes());
@@ -388,10 +387,13 @@ public class Worker implements Runnable {
 
                                 try {
                                     clientkey = channel.register(selector,SelectionKey.OP_READ);
-                                    clientkey.attach(new Auxiliar(uo,friend));
+                                    clientkey.attach(new Auxiliar(uo,friend,port));
                                 } catch (ClosedChannelException cce){
                                     cce.printStackTrace();
                                 }
+                                System.out.println(friend);
+                                ServerService.callBack(friend,port);
+
                                 while(!endingSfida || (sfidant ==-1 && sfidat == -1)){
                                     selector.select();
                                     Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
@@ -569,6 +571,7 @@ public class Worker implements Runnable {
         Vector<String> wordsTradotte;
         String sfidante;
         String sfidato;
+        int porta;
         private int paroleOk;
         private int paroleNotOk;
         private int paroleNotTra;
@@ -582,7 +585,7 @@ public class Worker implements Runnable {
          *
          * */
 
-        public Auxiliar(String sfidante,String sfidato) {
+        public Auxiliar(String sfidante,String sfidato,int porta) {
             req = ByteBuffer.allocate(BUF_DIM);
             this.sfidante = sfidante;
             this.sfidato = sfidato;
@@ -590,6 +593,7 @@ public class Worker implements Runnable {
             paroleNotOk =0;
             paroleNotTra =0;
             paroleOk =0;
+            this.porta = porta;
         }
 
         public void clearAll(){
@@ -892,6 +896,7 @@ public class Worker implements Runnable {
             try {
                 aux.resp.flip();
                 chan.send(aux.resp, aux.sa);
+
             } catch (IOException e){
                 e.printStackTrace();
             }

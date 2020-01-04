@@ -26,12 +26,17 @@ public class ServerCallBImpl extends RemoteObject implements ServerInterface {
     }
 
     public void update(int value,String username) throws RemoteException{
+        System.out.println("QUIDIOCA");
+
         doCallback(value,username);
     }
 
     private synchronized void doCallback(int value,String username) throws RemoteException {
         if(clients.containsKey(username)){
+            System.out.println("QUIDIOCA2");
             clients.get(username).notifyChallenge(value);
+            System.out.println("QUIDIOCA22");
+
         }
     }
 

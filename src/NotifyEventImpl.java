@@ -10,6 +10,7 @@ public class NotifyEventImpl extends RemoteObject implements NotifyEventInterfac
     public void notifyChallenge(int port) throws RemoteException {
 
         try {
+            System.out.println("DIOCAN222");
             MainClassClient.listenUDPreq(port);
         }catch (Exception e){
             e.printStackTrace();

@@ -115,6 +115,7 @@ public class MainClassServer {
         }
         sc.close();
         System.out.println("Server terminato...");
+        System.exit(1);
 
     }
 
