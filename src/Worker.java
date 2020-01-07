@@ -3,7 +3,6 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import javax.xml.crypto.Data;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -392,8 +391,9 @@ public class Worker implements Runnable {
                                     cce.printStackTrace();
                                 }
                                 System.out.println(friend);
-                                ServerService.callBack(friend,port);
 
+                                ServerService.callBack(friend,port);
+                                //amico.interestOps(SelectionKey.OP_READ);
                                 while(!endingSfida || (sfidant ==-1 && sfidat == -1)){
                                     selector.select();
                                     Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
@@ -403,7 +403,12 @@ public class Worker implements Runnable {
                                         selectedKeys.remove();
 
                                         if(!key.isValid()) continue;
-                                        if(key.isReadable()){
+                                        else if(key.isConnectable()){
+                                            //key.attach(new Auxiliar(uo,friend,port));
+                                            //key.interestOps(SelectionKey.OP_READ);
+                                            continue;
+                                        }
+                                        else if(key.isReadable()){
 
                                             readUDPreq(key);
                                         }
@@ -668,6 +673,7 @@ public class Worker implements Runnable {
         // devo ricevere richieste iniziali
         aux.req.flip();
         aux.resp = aux.req;
+
         String req = StandardCharsets.UTF_8.decode(aux.resp).toString();
         System.out.println("ecco stringa ricevuta: "+req);
         String[] elenco = req.split("/");
@@ -678,15 +684,26 @@ public class Worker implements Runnable {
                 aux.resp = ByteBuffer.wrap(send.getBytes());
                 key.attach(aux);
                 sfidato = key;
+                aux.setId(2);
+                sfidante.attach(aux);
 
-                key.interestOps(SelectionKey.OP_WRITE);
+                //aux.resp.flip();
+                //chan.send(aux.resp, aux.sa);
+                sfidante.interestOps(SelectionKey.OP_WRITE);
                 break;
             case "sfidante":
                 send = "In attesa dello sfidato: "+aux.sfidato;
                 aux.resp = ByteBuffer.wrap(send.getBytes());
                 key.attach(aux);
                 sfidante = key;
-                key.interestOps(SelectionKey.OP_WRITE);
+                aux.setId(1);
+
+                sfidante.attach(aux);
+
+                System.out.println("Chiave sfidante: "+sfidante);
+                //aux.resp.flip();
+                //chan.send(aux.resp, aux.sa);
+                sfidante.interestOps(SelectionKey.OP_WRITE);
                 break;
             case "ok":
                 // seleziono le parole da dizionario e le traduco per iniziare sfida
@@ -694,28 +711,36 @@ public class Worker implements Runnable {
                 // lato client settaranno il loro thread Timeout.
 
                 Random rand = new Random();
-                int K = rand.nextInt(K_BOUND)+1;
+                //int K = rand.nextInt(K_BOUND)+1;
+                int K = 1;
+                System.out.println("K è "+K);
                 Path path = Paths.get(".");
                 Path JsonNioPath = path.resolve(dizionario);
-                Vector<String> words = null;
+                Vector<String> words = new Vector<>();
                 if(Files.exists(JsonNioPath)){
+                    System.out.println("QUIDICO");
                     String elements;
                     try{
 
                         elements = MainClassServer.readJson(dizionario);
+                        System.out.println("prima di prendere parole");
                         words = takeWordsFromJson(K,elements);
+                        System.out.println("dopo aver preso le parole");
 
                     } catch (IOException e){
                         e.printStackTrace();
                     }
 
+                } else {
+                    for (int i=0;i<K;i++){
+                        assert words != null;
+                        words.add("gatto");
+                    }
                 }
 
                 Auxiliar aux1 = (Auxiliar) sfidante.attachment();
                 Auxiliar aux2 = (Auxiliar) sfidato.attachment();
 
-                aux1.setId(1);
-                aux2.setId(2);
                 aux1.setWords(words);
                 aux2.setWords(words);
 
@@ -726,19 +751,30 @@ public class Worker implements Runnable {
 
                 // invio tempo della sfida e prima parola ad entrambi
 
-                String resp = "60/"+words.size()+"/"+words.get(0);
+                String rispp = "60000/"+words.size()+"/"+words.get(0).trim();
 
-                aux1.resp = ByteBuffer.wrap(resp.getBytes());
-                aux2.resp = ByteBuffer.wrap(resp.getBytes());
+                System.out.println(rispp);
+                aux1.resp.clear();
+                aux2.resp.clear();
+                aux1.resp = ByteBuffer.wrap(rispp.getBytes());
+                aux2.resp = ByteBuffer.wrap(rispp.getBytes());
 
                 sfidante.attach(aux1);
                 sfidato.attach(aux2);
 
                 sfidat = 1;
                 sfidant = 1;
-                sfidato.interestOps(SelectionKey.OP_WRITE);
+                //aux1.resp.flip();
+                //aux2.resp.flip();
+                //chan.send(aux1.resp, aux1.sa);
+                //chan.send(aux2.resp,aux2.sa);
+                System.out.println("Attivo in write entrambe le chiavi");
                 sfidante.interestOps(SelectionKey.OP_WRITE);
-
+                sfidato.interestOps(SelectionKey.OP_WRITE);
+                aux1 =(Auxiliar) sfidante.attachment();
+                System.out.println(aux1.getId());
+                aux2 = (Auxiliar) sfidato.attachment();
+                System.out.println(aux2.getId());
                 break;
             case "not ok":
 
@@ -779,12 +815,17 @@ public class Worker implements Runnable {
                 if(actual>=total){
                     int id = temp.getId();
                     endOne(key, temp, id);
+                    System.out.println("HERE WE ARE");
                 } else {
-                    String newWord = temp.getWord(actual+1);
+                    actual = actual+1;
+                    String newWord = temp.getWord(actual);
                     String response = "parola/"+actual+"/"+total+"/"+newWord;
+                    temp.resp.clear();
                     temp.resp = ByteBuffer.wrap(response.getBytes());
                     key.attach(temp);
-                    key.interestOps(SelectionKey.OP_WRITE);
+                    temp.resp.flip();
+                    chan.send(temp.resp, temp.sa);
+                    //key.interestOps(SelectionKey.OP_WRITE);
                 }
                 break;
             case "tempo scaduto per rispondere":
@@ -794,6 +835,8 @@ public class Worker implements Runnable {
                 endOne(key, temp1, id1);
 
                 break;
+            default:
+                key.interestOps(SelectionKey.OP_WRITE);
         }
 
     }
@@ -803,6 +846,8 @@ public class Worker implements Runnable {
             case 1:
                 sfidant = -1;
                 sfidante = key;
+
+                sfidante.attach(key.attachment());
                 /*synchronized (registeredList) {
                     registeredList.get(temp1.sfidante).setPoint(temp1.getPunteggio());
                 }*/
@@ -810,6 +855,7 @@ public class Worker implements Runnable {
             case 2:
                 sfidat = -1;
                 sfidato = key;
+                sfidato.attach(key.attachment());
                 /*synchronized (registeredList) {
                     registeredList.get(temp1.sfidato).setPoint(temp1.getPunteggio());
                 }*/
@@ -868,16 +914,27 @@ public class Worker implements Runnable {
     }
 
     private void sendUDPreq(SelectionKey key){
+        System.out.println("Chiave che sta scrivendo: "+key);
         DatagramChannel chan = (DatagramChannel) key.channel();
         Auxiliar aux = (Auxiliar) key.attachment();
         String risp = StandardCharsets.UTF_8.decode(aux.resp).toString();
+
+        System.out.println(aux.id);
         if(!risp.contains("parola")){
             try {
+                System.out.println("QUI");
+
+                aux.resp.flip();
+                System.out.println(StandardCharsets.UTF_8.decode(aux.resp).toString());
+
                 aux.resp.flip();
                 chan.send(aux.resp, aux.sa);
             } catch (IOException e){
                 e.printStackTrace();
             }
+            aux.resp.clear();
+            aux.req.clear();
+            key.attach(aux);
             key.interestOps(SelectionKey.OP_READ);
         } else if(risp.contains("sfida non accettata")){
 
@@ -895,8 +952,12 @@ public class Worker implements Runnable {
         } else {
             try {
                 aux.resp.flip();
-                chan.send(aux.resp, aux.sa);
 
+                chan.send(aux.resp, aux.sa);
+                aux.resp.clear();
+                aux.req.clear();
+                key.attach(aux);
+                key.interestOps(SelectionKey.OP_READ);
             } catch (IOException e){
                 e.printStackTrace();
             }
@@ -934,22 +995,23 @@ public class Worker implements Runnable {
             Iterator<JSONObject> iterator = jsonArray.iterator();
             while(iterator.hasNext()){
                 JSONObject obj = iterator.next();
-                String word =(String)obj.get("username");
+                String word =(String)obj.get("word");
                 dictionary.add(word);
+                System.out.println(word);
 
             }
 
-            while(listaInput.size()<k){
+            while(result.size()<k){
                 Random rand = new Random();
-                int index = rand.nextInt(dictionary.size());
-                result.add(dictionary.get(index));
-                listaInput = new ArrayList<String>(new LinkedHashSet<String>(result));
+                int index = rand.nextInt(dictionary.size())+1;
 
+                result.add(dictionary.get(index));
+                System.out.println("index = "+index);
+                System.out.println("word = "+dictionary.get(index));
             }
 
-            result.removeAllElements();
 
-            result.addAll(listaInput);
+
 
         }catch (ParseException e){
             e.printStackTrace();

@@ -1,8 +1,8 @@
 public class Timeout implements Runnable {
 
-    private long time;
+    private int time;
 
-    public Timeout(long tempo){
+    public Timeout(int tempo){
         time = tempo;
     }
 
