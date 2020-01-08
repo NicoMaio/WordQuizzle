@@ -308,6 +308,7 @@ public class MainClassClient {
                             ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
                             client.write(buffer);
 
+                            System.out.println("MANDATO");
                             ByteBuffer fer = ByteBuffer.allocate(1024);
                             client.read(fer);
 
@@ -394,14 +395,19 @@ public class MainClassClient {
                                 System.out.println(new String(receiveData));
 
 
-                                clientSocket.receive(receivePacket);
+                                /*clientSocket.receive(receivePacket);
 
                                 String initsfida= null;
                                 initsfida = new String(receiveData);
                                 System.out.println(initsfida);
 
                                 clientSocket.setSoTimeout(0);
-                                if(!initsfida.contains("sfida")) {
+                                */
+                                ByteBuffer reader = ByteBuffer.allocate(1024);
+                                client.read(reader);
+                                reader.flip();
+                                String initsfida = StandardCharsets.UTF_8.decode(reader).toString();
+                                if(initsfida.contains("60000")) {
 
                                     System.out.println("QUI2");
                                     String[] el = initsfida.split("/");
@@ -416,28 +422,34 @@ public class MainClassClient {
                                     System.out.println("Via alla sfida di traduzione!");
                                     System.out.println("Avete " + timeout + " secondi per tradurre correttamente " + countWord + " parole.");
                                     while (time.isAlive() && i <= countWord) {
-                                        BufferedReader insert = new BufferedReader(new InputStreamReader(System.in));
                                         System.out.println("Challenge " + i + "/" + countWord + ": " + nextWord);
                                         System.out.printf(">");
-                                        String risp = "parola/" + i + "/" + countWord + "/" + insert.readLine().substring(1);
-                                        sendData = risp.getBytes();
-                                        sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, newport);
-                                        clientSocket.send(sendPacket);
+                                        lock.lock();
+                                        String word = input.nextLine();
+                                        lock.unlock();
+                                        System.out.println(word);
+                                        String risp = "parola/" + i + "/" + countWord + "/" + word;
+                                        reader= ByteBuffer.wrap(risp.getBytes());
+                                        client.write(reader);
 
-                                        clientSocket.receive(receivePacket);
-                                        risp = new String(receiveData);
+                                        reader = ByteBuffer.allocate(1024);
+                                        client.read(reader);
+                                        reader.flip();
+                                        risp = StandardCharsets.UTF_8.decode(reader).toString();
 
                                         String[] sl = risp.split("/");
 
                                         nextWord = sl[3];
                                         i++;
 
-                                        insert.close();
                                     }
 
-                                    clientSocket.receive(receivePacket);
-
-                                    System.out.println(new String(receiveData));
+                                    reader = ByteBuffer.allocate(1024);
+                                    client.read(reader);
+                                    String receive = StandardCharsets.UTF_8.decode(reader).toString();
+                                    System.out.println(receive);
+                                } else {
+                                    System.out.println(initsfida);
                                 }
                             }
                         }
@@ -598,13 +610,27 @@ public class MainClassClient {
             }
 
             if (ok == 1) {
+                SocketAddress address = new InetSocketAddress(host, port);
+                SocketChannel client = null;
                 try {
-                    clientSocket.receive(receivePacket);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    client = SocketChannel.open(address);
+
+                } catch (IOException e){
+
                 }
 
-                String initsfida = new String(receiveData);
+                ByteBuffer reader = ByteBuffer.allocate(1024);
+
+                try{
+                    System.out.println("FERMO");
+                    client.read(reader);
+                    System.out.println("gionni");
+                }catch (IOException e){
+                    System.out.println("afato");
+                }
+
+                reader.flip();
+                String initsfida = StandardCharsets.UTF_8.decode(reader).toString();
 
                 System.out.println(initsfida);
                 String[] el = initsfida.split("/");
@@ -620,17 +646,22 @@ public class MainClassClient {
                     Scanner in2 = new Scanner(System.in);
                     System.out.println("Challenge " + i + "/" + countWord + ": " + nextWord);
                     String risp = null;
-                    risp = "parola/" + i + "/" + countWord + "/" + in2.nextLine();
+                    String word = in2.nextLine();
+                    System.out.println(word);
+                    risp = "parola/" + i + "/" + countWord + "/" + word;
 
-                    sendPacket = new DatagramPacket(risp.getBytes(), risp.length(), IPAddress, port);
+                    reader = ByteBuffer.wrap(risp.getBytes());
                     try {
-                        clientSocket.send(sendPacket);
+                        client.write(reader);
 
-                        clientSocket.receive(receivePacket);
+                        reader = ByteBuffer.allocate(1024);
+                        client.read(reader);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    risp = new String(receiveData);
+
+                    reader.flip();
+                    risp = StandardCharsets.UTF_8.decode(reader).toString();
 
                     String[] sl = risp.split("/");
 
@@ -641,13 +672,17 @@ public class MainClassClient {
 
 
                 }
+
+                reader = ByteBuffer.allocate(1024);
                 try {
-                    clientSocket.receive(receivePacket);
+                    client.read(reader);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
 
-                System.out.println(new String(receiveData));
+                reader.flip();
+                System.out.println(StandardCharsets.UTF_8.decode(reader).toString());
+
 
             }
             close.set(false);

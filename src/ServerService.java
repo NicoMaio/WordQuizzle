@@ -21,7 +21,7 @@ public class ServerService implements Runnable {
     private static int BUF_SZ = 1024;
     private static String fileJsonName;
     private int port;
-    private TreeMap<String, Utente> registeredList;
+    public TreeMap<String, Utente> registeredList;
     private TreeMap<String,SelectionKey> usersList;
     private ThreadPoolExecutor threadPoolExecutor;
     private static ServerCallBImpl server;
@@ -111,11 +111,8 @@ public class ServerService implements Runnable {
 
                     // se chiave è Readable
                     if (key.isReadable()) {
-                        try {
                             tryRead(key);
-                        }catch (Exception e){
-                            e.printStackTrace();
-                        }
+
                         //key.interestOps(SelectionKey.OP_WRITE);
                     } else if (key.isWritable()) {
 
@@ -180,58 +177,79 @@ public class ServerService implements Runnable {
     }
 
 
-    private void tryRead(SelectionKey key) throws Exception{
+    private void tryRead(SelectionKey key) {
 
         // seleziono channel e leggo
         SocketChannel client = (SocketChannel) key.channel();
-        Con con = (Con) key.attachment();
+        Con con = null;
 
         try {
-            con.sa = client.getRemoteAddress();
-        }catch (IOException e){
-            e.printStackTrace();
-        }
 
-        con.req.clear();
+            con = (Con) key.attachment();
+        } catch (ClassCastException e){
+
+        }
 
         int bytes= 0;
-        try {
-            bytes= client.read(con.req);
-        }catch (IOException e){
-            e.printStackTrace();
-        }
+        if(con!=null) {
+            try {
+                con.sa = client.getRemoteAddress();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
+            con.req.clear();
+
+            try {
+                bytes = client.read(con.req);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } else {
+            Worker.Auxiliar aux = (Worker.Auxiliar)key.attachment();
+            aux.req.clear();
+
+            try{
+                bytes= client.read(aux.req);
+            } catch (IOException e){
+
+            }
+        }
         if(bytes >0) {
 
-            Worker work = new Worker(con, registeredList, usersList,key);
+            Worker work = new Worker(registeredList, usersList,key);
             threadPoolExecutor.execute(work);
         }
     }
 
     public static void dontRead(SelectionKey key1,SelectionKey key2){
 
-        key1.interestOps(0);
-        key2.interestOps(0);
+        key1.interestOps(SelectionKey.OP_WRITE);
+        key2.interestOps(SelectionKey.OP_WRITE);
 
     }
 
     public static void abilityRead(SelectionKey key1, SelectionKey key2){
+        System.out.println("Riattivate");
         key1.interestOps(SelectionKey.OP_READ);
         key2.interestOps(SelectionKey.OP_READ);
 
-
         selector.wakeup();
+
 
     }
 
     private void makeWrite(SelectionKey key){
-        SocketChannel client =(SocketChannel) key.channel();
+        /*SocketChannel client =(SocketChannel) key.channel();
         Con con = (Con) key.attachment();
         try{
             client.write(con.resp);
         }catch (IOException e){
             e.printStackTrace();
         }
+
+         */
     }
 
     public static void saveUsersStats(TreeMap<String, Utente> registeredList){
