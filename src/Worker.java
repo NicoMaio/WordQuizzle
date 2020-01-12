@@ -15,6 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.IntStream;
 
 public class Worker implements Runnable {
@@ -31,8 +35,11 @@ public class Worker implements Runnable {
     private static SelectionKey sfidato1;
     private static int sfidat;
     private static int sfidant;
+    private static AtomicBoolean sfidante2;
+    private static AtomicBoolean sfidato2;
     private boolean endingSfida;
     static SocketChannel client;
+    private static Lock lock;
 
     private static int BUF_DIM = 1024;
     public Worker(TreeMap<String, Utente> registeredList,
@@ -40,8 +47,11 @@ public class Worker implements Runnable {
         this.usersList = usersList;
         this.key = key;
         Worker.registeredList = registeredList;
-        sfidat = 0;
-        sfidant = 0;
+        lock = new ReentrantLock();
+        sfidat = 5;
+        sfidant = 5;
+        sfidante2= new AtomicBoolean();
+        sfidato2= new AtomicBoolean();
         endingSfida= false;
     }
 
@@ -50,7 +60,7 @@ public class Worker implements Runnable {
 
         String receive;
         try {
-            ServerService.Con con = (ServerService.Con) key.attachment();
+            Auxiliar con = (Auxiliar) key.attachment();
             con.req.flip();
             receive = StandardCharsets.UTF_8.decode(con.req).toString();
             System.out.println("ecco stringa ricevuta: " + receive);
@@ -114,7 +124,7 @@ public class Worker implements Runnable {
                     }
 
                     // salvo risposta per client in con.resp
-                    ServerService.Con con = (ServerService.Con)key.attachment();
+                    Auxiliar con = (Auxiliar)key.attachment();
                     con.typeOp = 1;
                     con.resp = ByteBuffer.wrap(response.getBytes());
 
@@ -156,7 +166,7 @@ public class Worker implements Runnable {
                         resp += "-1";
                     }
 
-                    ServerService.Con con9 = (ServerService.Con)key.attachment();
+                    Auxiliar con9 = (Auxiliar)key.attachment();
 
                     con9.typeOp = 2;
                     con9.resp = ByteBuffer.wrap(resp.getBytes());
@@ -194,7 +204,7 @@ public class Worker implements Runnable {
                         }
 
                         String result = array.toJSONString();
-                        ServerService.Con con8 = (ServerService.Con)key.attachment();
+                        Auxiliar con8 = (Auxiliar)key.attachment();
 
 
                         con8.resp = ByteBuffer.wrap(result.getBytes());
@@ -214,6 +224,7 @@ public class Worker implements Runnable {
                     String nfriend = elenco[2];
 
                     int isok = 0;
+
                     synchronized (registeredList){
 
                         if(registeredList.get(nfriend)!=null){
@@ -242,7 +253,7 @@ public class Worker implements Runnable {
                     * */
 
                     risp += isok;
-                    ServerService.Con con7 = (ServerService.Con)key.attachment();
+                    Auxiliar con7 = (Auxiliar)key.attachment();
 
                     con7.resp = ByteBuffer.wrap(risp.getBytes());
 
@@ -263,7 +274,7 @@ public class Worker implements Runnable {
                     }
 
                     String risposta =""+ punteggio;
-                    ServerService.Con con6 = (ServerService.Con)key.attachment();
+                    Auxiliar con6 = (Auxiliar)key.attachment();
 
                     con6.resp = ByteBuffer.wrap(risposta.getBytes());
 
@@ -303,7 +314,7 @@ public class Worker implements Runnable {
                     }
 
                     String rispo = array.toJSONString();
-                    ServerService.Con con5 = (ServerService.Con)key.attachment();
+                    Auxiliar con5 = (Auxiliar)key.attachment();
 
                     con5.resp = ByteBuffer.wrap(rispo.getBytes());
                     try {
@@ -317,7 +328,7 @@ public class Worker implements Runnable {
                     String friend = elenco[2];
                     String respo = "";
 
-                    ServerService.Con con4= (ServerService.Con)key.attachment();
+                    Auxiliar con4= (Auxiliar)key.attachment();
 
                     int isafriend = 1;
                     synchronized (registeredList){
@@ -356,7 +367,7 @@ public class Worker implements Runnable {
                             // invio messaggio d'errore amico sfidato non è online
                             respo += "Amico "+friend+" non è online.";
 
-                            ServerService.Con con3 = (ServerService.Con)key.attachment();
+                            Auxiliar con3 = (Auxiliar)key.attachment();
 
                             con3.resp = ByteBuffer.wrap(respo.getBytes());
                             try {
@@ -396,7 +407,7 @@ public class Worker implements Runnable {
                                 channel.configureBlocking(false);
 
                                 respo += "Scrivi qui:" + port;
-                                ServerService.Con con2 = (ServerService.Con)key.attachment();
+                                Auxiliar con2 = (Auxiliar)key.attachment();
 
                                 con2.resp = ByteBuffer.wrap(respo.getBytes());
                                 try {
@@ -419,9 +430,11 @@ public class Worker implements Runnable {
 
                                 ServerService.callBack(friend, port);
                                 //amico.interestOps(SelectionKey.OP_READ);
-                                sfidant = 0;
-                                sfidat = 0;
-                                while (!endingSfida && (sfidant == 0 && sfidat == 0)) {
+                                lock.lock();
+                                sfidant = 5;
+                                sfidat = 5;
+                                lock.unlock();
+                                while (!endingSfida && (sfidant == 5 && sfidat == 5)) {
                                     System.out.println("Ending = " + endingSfida + " Sfidant,Sfidat = " + sfidant + " , " + sfidat);
                                     if (selector.isOpen()) {
                                         selector.select();
@@ -473,10 +486,10 @@ public class Worker implements Runnable {
 
                                     }
 
-
+                                    lock.lock();
                                     sfidant = 0;
                                     sfidat = 0;
-
+                                    lock.unlock();
 
                                     // seleziono le parole da dizionario e le traduco per iniziare sfida
                                     // seleziono tempo per sfida e lo invio insieme con la prima parola,
@@ -515,6 +528,9 @@ public class Worker implements Runnable {
                                     aux1.setWordsTradotte(traduzioni);
                                     aux2.setWordsTradotte(traduzioni);
 
+                                    for(String ok1:traduzioni){
+                                        System.out.println(ok1);
+                                    }
                                     // invio tempo della sfida e prima parola ad entrambi
 
                                     String rispp = "60000/" + words.size() + "/" + words.get(0).trim();
@@ -524,6 +540,8 @@ public class Worker implements Runnable {
                                     aux1.resp = ByteBuffer.wrap(rispp.getBytes());
                                     aux2.resp = ByteBuffer.wrap(rispp.getBytes());
 
+                                    aux1.setId(1);
+                                    aux2.setId(2);
                                     key.attach(aux1);
                                     amico.attach(aux2);
 
@@ -535,8 +553,10 @@ public class Worker implements Runnable {
                                     can2.write(aux2.resp);
 
                                     System.out.println("QUIIIII");
-                                    sfidant = 0;
-                                    sfidat = 0;
+                                    lock.lock();
+                                    sfidant =5;
+                                    sfidat = 5;
+                                    lock.unlock();
                                     sfidante1.interestOps(SelectionKey.OP_READ);
                                     sfidato1.interestOps(SelectionKey.OP_READ);
                                 }
@@ -566,7 +586,7 @@ public class Worker implements Runnable {
                                 e.printStackTrace();
                             }
                             ServerService.abilityRead(key,amico);
-                            ServerService.saveUsersStats(registeredList);
+                            System.out.println("SALVATO TUTTO");
                         }
                     }
 
@@ -595,7 +615,7 @@ public class Worker implements Runnable {
             int paroleNotOkSfidant = tempSfidante.getParoleNotOk();
             int paroleNotTraSfidant = tempSfidante.getParoleNotTra();
 
-            Auxiliar tempSfidato = (Auxiliar)sfidato.attachment();
+            Auxiliar tempSfidato = (Auxiliar)sfidato1.attachment();
             int puntsfidat = tempSfidato.getPunteggio();
             int paroleOkSfidat = tempSfidato.getParoleOk();
             int paroleNotOkSfidat = tempSfidato.getParoleNotOk();
@@ -608,14 +628,17 @@ public class Worker implements Runnable {
                 sendToWinner(sfidante1,tempSfidante, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat, finalpunt);
 
                 synchronized (registeredList){
+                    System.out.println("SFIDANTE: "+tempSfidante.sfidante+". SFIDATO: "+tempSfidato.sfidato+" punt: "+puntsfidat);
                     registeredList.get(tempSfidante.sfidante).setPoint(finalpunt);
                     registeredList.get(tempSfidato.sfidato).setPoint(puntsfidat);
                 }
 
                 sendToLoser(sfidato1,puntsfidant, tempSfidato, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat);
 
+
             } else if(puntsfidant == puntsfidat){
                 sendRisultato(sfidante1,tempSfidante, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat);
+                System.out.println("E QUI");
 
                 synchronized (registeredList){
                     registeredList.get(tempSfidante.sfidante).setPoint(puntsfidant);
@@ -623,16 +646,19 @@ public class Worker implements Runnable {
                 }
 
                 sendRisultato(sfidato1,tempSfidato, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat, puntsfidant);
+
             } else {
                 int finalpunt = puntsfidat+3;
                 sendToLoser(sfidante1,puntsfidat, tempSfidante, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant);
 
+                System.out.println("ENTRO ANCHE QUI");
                 synchronized (registeredList){
                     registeredList.get(tempSfidante.sfidante).setPoint(puntsfidant);
                     registeredList.get(tempSfidato.sfidato).setPoint(finalpunt);
                 }
 
                 sendToWinner(sfidato1,tempSfidato, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat, puntsfidant, finalpunt);
+
             }
         } else {
 
@@ -648,7 +674,7 @@ public class Worker implements Runnable {
 
         }
     }
-    public static void tryReadTCP(SelectionKey key,String receive)throws IOException{
+    public void tryReadTCP(SelectionKey key,String receive)throws IOException{
 
         System.out.println("ecco stringa ricevuta: "+receive);
         String[] elenco = receive.split("/");
@@ -678,13 +704,26 @@ public class Worker implements Runnable {
                 temp.setParoleNotOk(1);
             }
 
+            System.out.println("punteggio parole corrette: "+temp.getParoleOk());
             if(actual>=total){
                 int id = temp.getId();
+                key.attach(temp);
+                System.out.println("PRMA DI ENDONE "+id);
+
+                // TODO sistemare endone con degli indicatori in Auxiliar
                 endOne(key, temp, id);
-                if(sfidant == 0 && sfidat == 0){
+                System.out.println("PRMA DI INVIARE RISPOSTA");
+                System.out.println("sfidant, sfidat "+sfidant+", "+sfidat);
+                System.out.println("sfidante: "+sfidante2.get()+"sfidato: "+sfidato2.get());
+                Auxiliar aux =(Auxiliar) sfidante1.attachment();
+                Auxiliar aux2 = (Auxiliar)sfidato1.attachment();
+                if(aux2.fine == 1 &&  aux.fine==1){
                     startResponse(1);
+
+                    System.out.println("HERE WE ARE");
+                    ServerService.saveUsersStats(registeredList);
                 }
-                System.out.println("HERE WE ARE");
+
             } else {
                 System.out.println("Eccoci");
                 actual = actual+1;
@@ -699,9 +738,19 @@ public class Worker implements Runnable {
                 //key.interestOps(SelectionKey.OP_WRITE);
             }
         } else {
+            System.out.println("UNO DEI DUE TIMEOUT é SCADUTO");
             Auxiliar temp = (Auxiliar)key.attachment();
             int id = temp.getId();
+            key.attach(temp);
             endOne(key,temp,id);
+            Auxiliar aux =(Auxiliar) sfidante1.attachment();
+            Auxiliar aux2 = (Auxiliar)sfidato1.attachment();
+            if(aux2.fine == 1 &&  aux.fine==1){
+                startResponse(1);
+
+                System.out.println("HERE WE ARE");
+                ServerService.saveUsersStats(registeredList);
+            }
         }
 
 
@@ -710,12 +759,14 @@ public class Worker implements Runnable {
         String risp2;
         risp2 = "Hai tradotto correttamente "+paroleOkSfidat+", ne hai sbagliate "+paroleNotOkSfidat+" e non hai risposto a "+paroleNotTraSfidat+"."
                 +"\nHai totalizzato "+puntsfidat+" punti."+
-                "\nIl tuo avversario ha totatlizzato "+puntsfidant+" punti."+
+                "\nIl tuo avversario ha totatlizzato "+(puntsfidant +3)+" punti."+
                 "\nHai perso la sfida...";
         tempSfidato.resp = ByteBuffer.wrap(risp2.getBytes());
         SocketChannel chan2 = (SocketChannel) key.channel();
         try {
             chan2.write(tempSfidato.resp);
+            System.out.println("PUNTEGGIO INVIATO AL PERDENTE");
+
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -731,7 +782,7 @@ public class Worker implements Runnable {
         SocketChannel chan2 = (SocketChannel) key.channel();
         try {
             chan2.write(tempSfidante.resp);
-            System.out.println("Invato risultato");
+            System.out.println("PUNTEGGIO INVIATO AL VINCITORE");
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -747,6 +798,7 @@ public class Worker implements Runnable {
         SocketChannel chan2 = (SocketChannel) key.channel();
         try {
             chan2.write(tempSfidante.resp);
+            System.out.println("PUNTEGGIO INVIATO");
         } catch (IOException e){
             e.printStackTrace();
         }
@@ -766,7 +818,7 @@ public class Worker implements Runnable {
         return sortedEntries;
     }
 
-    public class Auxiliar {
+    public static class Auxiliar {
 
         ByteBuffer req;
         ByteBuffer resp;
@@ -779,6 +831,8 @@ public class Worker implements Runnable {
         private int paroleOk;
         private int paroleNotOk;
         private int paroleNotTra;
+        int typeOp;
+        int fine;
 
         private int id;
 
@@ -799,12 +853,14 @@ public class Worker implements Runnable {
             paroleOk =0;
             this.porta = porta;
             id = 0;
+            fine = 0;
         }
 
         public void clearAll(){
             req.clear();
             resp.clear();
         }
+
 
         public void setWords(Vector<String> parole){
             wordsDatradurre = parole;
@@ -885,11 +941,11 @@ public class Worker implements Runnable {
                 key.attach(aux);
                 sfidato = key;
                 aux.setId(2);
-                sfidante.attach(aux);
+                sfidato.attach(aux);
 
                 //aux.resp.flip();
                 //chan.send(aux.resp, aux.sa);
-                sfidante.interestOps(SelectionKey.OP_WRITE);
+                sfidato.interestOps(SelectionKey.OP_WRITE);
                 break;
             case "sfidante":
                 send = "In attesa dello sfidato: "+aux.sfidato;
@@ -967,11 +1023,14 @@ public class Worker implements Runnable {
                     //key.interestOps(SelectionKey.OP_WRITE);
                 }
                 break;
-            case "tempo scaduto per rispondere":
+            case "Tempo Scaduto":
                 Auxiliar temp1 = (Auxiliar) key.attachment();
 
                 int id1 = temp1.getId();
                 endOne(key, temp1, id1);
+                Auxiliar aux1 = (Auxiliar) sfidante1.attachment();
+                Auxiliar aux2 = (Auxiliar) sfidato1.attachment();
+
 
                 break;
             default:
@@ -980,21 +1039,31 @@ public class Worker implements Runnable {
 
     }
 
-    private static void endOne(SelectionKey key, Auxiliar temp1, int id1) {
+    private void endOne(SelectionKey key, Auxiliar temp1, int id1) {
         switch (id1){
             case 1:
+                lock.lock();
                 sfidant = 0;
+                lock.unlock();
                 sfidante1 = key;
 
-                sfidante1.attach(key.attachment());
+                sfidante2.set(true);
+                System.out.println("SFIDANTE FINISCE");
+                temp1.fine = 1;
+                sfidante1.attach(temp1);
                 /*synchronized (registeredList) {
                     registeredList.get(temp1.sfidante).setPoint(temp1.getPunteggio());
                 }*/
                 break;
             case 2:
+                lock.lock();
                 sfidat = 0;
+                lock.unlock();
+                sfidato2.set(true);
+                System.out.println("SFIDATO FINISCE");
                 sfidato1 = key;
-                sfidato1.attach(key.attachment());
+                temp1.fine = 1;
+                sfidato1.attach(temp1);
                 /*synchronized (registeredList) {
                     registeredList.get(temp1.sfidato).setPoint(temp1.getPunteggio());
                 }*/
@@ -1008,7 +1077,7 @@ public class Worker implements Runnable {
         Iterator<String> iterator = words.iterator();
         while(iterator.hasNext()) {
             try {
-                URL url1 = new URL("https://api.mymemory.translated.net/get?q=" + iterator.next() + "&langpair=en|it");
+                URL url1 = new URL("https://api.mymemory.translated.net/get?q=" + iterator.next() + "&langpair=it|en");
 
 
                 try (BufferedReader in = new BufferedReader(new InputStreamReader(url1.openStream()))) {
@@ -1062,8 +1131,10 @@ public class Worker implements Runnable {
         if(!risp.contains("parola")){
             if(risp.contains("sfida non accettata")){
                 startResponse(0);
+                lock.lock();
                 sfidant = 2;
                 sfidat = 2;
+                lock.unlock();
             }
             try {
                 System.out.println("QUI");

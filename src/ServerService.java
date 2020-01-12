@@ -40,21 +40,21 @@ public class ServerService implements Runnable {
 
     public void run() {
 
-        System.out.println("Listening for connection on port "+port+" ...");
+        System.out.println("Listening for Worker.Auxiliarnection on port "+port+" ...");
 
         ServerSocketChannel serverChannel;
         //Selector selector;
 
         try {
 
-            // apro connessione
+            // apro Worker.Auxiliarnessione
             serverChannel = ServerSocketChannel.open();
             ServerSocket ss = serverChannel.socket();
             InetSocketAddress address = new InetSocketAddress(port);
 
             ss.bind(address);
 
-            // imposto connessione non bloccante lato server
+            // imposto Worker.Auxiliarnessione non bloccante lato server
             serverChannel.configureBlocking(false);
 
             // apro selettore
@@ -91,19 +91,19 @@ public class ServerService implements Runnable {
                     // se chiave è Acceptable
                     if (key.isAcceptable()) {
 
-                        // accetto connessione
+                        // accetto Worker.Auxiliarnessione
                         ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                        //server.configureBlocking(false);
+                        //server.Worker.AuxiliarfigureBlocking(false);
 
                         SocketChannel client = server.accept();
 
-                        // imposto connessione non bloccante
+                        // imposto Worker.Auxiliarnessione non bloccante
                         client.configureBlocking(false);
 
                         // registro OP_READ ke
                         if(client != null) {
                             SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
-                            clientkey.attach(new Con());
+                            clientkey.attach(new Worker.Auxiliar("","",0));
                         }
 
 
@@ -151,63 +151,39 @@ public class ServerService implements Runnable {
 
     }
 
-    public class Con {
 
-        ByteBuffer req;
-        ByteBuffer resp;
-        SocketAddress sa;
-
-        /*
-        *   type 1 = login
-        *   type 2 = logout
-        *
-        * */
-        int typeOp;
-
-        public Con() {
-            typeOp = -1;
-            req = ByteBuffer.allocate(BUF_SZ);
-        }
-
-        public void clearAll(){
-            req.clear();
-            resp.clear();
-            typeOp = -1;
-        }
-    }
 
 
     private void tryRead(SelectionKey key) {
 
         // seleziono channel e leggo
         SocketChannel client = (SocketChannel) key.channel();
-        Con con = null;
+        Worker.Auxiliar aux = null;
 
         try {
 
-            con = (Con) key.attachment();
+            aux = (Worker.Auxiliar) key.attachment();
         } catch (ClassCastException e){
 
         }
 
         int bytes= 0;
-        if(con!=null) {
+        if(aux!=null) {
             try {
-                con.sa = client.getRemoteAddress();
+                aux.sa = client.getRemoteAddress();
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            con.req.clear();
+            aux.req.clear();
 
             try {
-                bytes = client.read(con.req);
+                bytes = client.read(aux.req);
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
         } else {
-            Worker.Auxiliar aux = (Worker.Auxiliar)key.attachment();
             aux.req.clear();
 
             try{
@@ -242,9 +218,9 @@ public class ServerService implements Runnable {
 
     private void makeWrite(SelectionKey key){
         /*SocketChannel client =(SocketChannel) key.channel();
-        Con con = (Con) key.attachment();
+        Worker.Auxiliar Worker.Auxiliar = (Worker.Auxiliar) key.attachment();
         try{
-            client.write(con.resp);
+            client.write(Worker.Auxiliar.resp);
         }catch (IOException e){
             e.printStackTrace();
         }
@@ -269,6 +245,7 @@ public class ServerService implements Runnable {
             obj.put("password",temp.getPassword());
             obj.put("points",temp.getPoint());
 
+            System.out.println("Punteggio: "+temp.getPoint());
             Vector<String> friends =  temp.getFriends();
             Iterator<String> iterFriends = friends.iterator();
             JSONArray arrayfriends = new JSONArray();
@@ -292,7 +269,7 @@ public class ServerService implements Runnable {
             Files.deleteIfExists(JsonNioPath);
             Files.createFile(JsonNioPath);
 
-            // scrivo il file nuo con json object
+            // scrivo il file nuo Worker.Auxiliar json object
             FileChannel outChannel = FileChannel.open(JsonNioPath, StandardOpenOption.WRITE);
             String body = array.toJSONString();
             byte[] bytes = body.getBytes();
