@@ -591,6 +591,8 @@ public class Worker implements Runnable {
                     }
 
                 break;
+
+                default:
                 case "parola":{
                     try {
                         System.out.println("QUI");
@@ -599,7 +601,6 @@ public class Worker implements Runnable {
 
                     }
                 }
-                default:
                 break;
             }
         }
@@ -796,6 +797,7 @@ public class Worker implements Runnable {
                 "\nLa sfida è finita in parità";
         tempSfidante.resp = ByteBuffer.wrap(risp1.getBytes());
         SocketChannel chan2 = (SocketChannel) key.channel();
+        System.out.println(risp1);
         try {
             chan2.write(tempSfidante.resp);
             System.out.println("PUNTEGGIO INVIATO");
