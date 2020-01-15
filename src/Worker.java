@@ -983,7 +983,11 @@ public class Worker implements Runnable {
                 auxs.resp = ByteBuffer.wrap(risp.getBytes());
                 sfidante.attach(auxs);
                 sfidante.interestOps(SelectionKey.OP_WRITE);
-                break;
+               /* Auxiliar aux2 = (Auxiliar) sfidato.attachment();
+                aux2.resp = ByteBuffer.wrap(risp.getBytes());
+                sfidato.attach(aux2);
+                sfidato.interestOps(SelectionKey.OP_WRITE);
+               */ break;
 
             case "parola":
                 // leggo parola tradotta aggiorno punteggio e mando parola successiva
