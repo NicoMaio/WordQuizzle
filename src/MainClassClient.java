@@ -149,7 +149,8 @@ public class MainClassClient {
                     t.join();
                     sfidato.set(false);
                 }
-                System.out.println("OOOOSSS");
+                //System.out.println("OOOOSSS");
+                System.out.printf(">");
                 lock.lock();
                     in = input.readLine();
                 lock.unlock();
@@ -221,247 +222,268 @@ public class MainClassClient {
                         }
                         break;
                         case "logout": {
-                            String toServer = "logout/" + username;
+                            if(username== null){
+                                System.out.println("Need a login before");
+                            } else {
+                                String toServer = "logout/" + username;
 
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
 
-                            client.write(buffer);
+                                client.write(buffer);
 
-                            ByteBuffer fer2 = ByteBuffer.allocate(1024);
-                            client.read(fer2);
-                            fer2.flip();
-                            String resp = "" + StandardCharsets.UTF_8.decode(fer2).toString();
+                                ByteBuffer fer2 = ByteBuffer.allocate(1024);
+                                client.read(fer2);
+                                fer2.flip();
+                                String resp = "" + StandardCharsets.UTF_8.decode(fer2).toString();
 
-                            switch (resp) {
-                                case "1":
-                                    System.out.println("Logout avvenuto con successo");
-                                    break;
-                                case "-1":
-                                    System.out.println("Logout fallito");
-                                    break;
+                                switch (resp) {
+                                    case "1":
+                                        System.out.println("Logout avvenuto con successo");
+                                        break;
+                                    case "-1":
+                                        System.out.println("Logout fallito");
+                                        break;
+                                }
                             }
+
                         }
                         break;
                         case "aggiungi_amico": {
-                            String friend = elenco[1];
+                            if(username== null){
+                                System.out.println("Need a login before");
+                            } else {
+                                String friend = elenco[1];
 
-                            String toServer = "aggiungi_amico/" + username + "/" + friend;
+                                String toServer = "aggiungi_amico/" + username + "/" + friend;
 
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
 
-                            client.write(buffer);
+                                client.write(buffer);
 
-                            ByteBuffer fer2 = ByteBuffer.allocate(1024);
-                            client.read(fer2);
-                            fer2.flip();
-                            String resp = "" + StandardCharsets.UTF_8.decode(fer2).toString();
+                                ByteBuffer fer2 = ByteBuffer.allocate(1024);
+                                client.read(fer2);
+                                fer2.flip();
+                                String resp = "" + StandardCharsets.UTF_8.decode(fer2).toString();
 
-                            switch (resp) {
-                                case "-1": {
-                                    System.out.println("Username dell'amico indicato non è registrato");
-                                }
-                                break;
-                                case "-2": {
-                                    System.out.println(friend + " è già tuo amico");
-                                }
-                                break;
-                                case "1": {
-                                    System.out.println("Amicizia " + username + "-" + friend + " creata.");
+                                switch (resp) {
+                                    case "-1": {
+                                        System.out.println("Username dell'amico indicato non è registrato");
+                                    }
+                                    break;
+                                    case "-2": {
+                                        System.out.println(friend + " è già tuo amico");
+                                    }
+                                    break;
+                                    case "1": {
+                                        System.out.println("Amicizia " + username + "-" + friend + " creata.");
+                                    }
                                 }
                             }
                         }
                         break;
                         case "lista_amici": {
-                            String toServer = "lista_amici/" + username;
+                            if(username== null){
+                                System.out.println("Need a login before");
+                            } else {
+                                String toServer = "lista_amici/" + username;
 
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
-                            client.write(buffer);
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+                                client.write(buffer);
 
-                            ByteBuffer fer = ByteBuffer.allocate(1024);
-                            client.read(fer);
+                                ByteBuffer fer = ByteBuffer.allocate(1024);
+                                client.read(fer);
 
-                            fer.flip();
-                            String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
+                                fer.flip();
+                                String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
 
-                            JSONArray jsonArray;
-                            JSONParser parser = new JSONParser();
+                                JSONArray jsonArray;
+                                JSONParser parser = new JSONParser();
 
-                            try {
-                                jsonArray = (JSONArray) parser.parse(risposta);
+                                try {
+                                    jsonArray = (JSONArray) parser.parse(risposta);
 
-                                Iterator iterator = jsonArray.iterator();
-                                String result = "";
-                                while (iterator.hasNext()) {
-                                    JSONObject obj = (JSONObject) iterator.next();
-                                    String utente = (String) obj.get("username");
-                                    result += utente;
-                                    if (iterator.hasNext()) {
-                                        result += ", ";
+                                    Iterator iterator = jsonArray.iterator();
+                                    String result = "";
+                                    while (iterator.hasNext()) {
+                                        JSONObject obj = (JSONObject) iterator.next();
+                                        String utente = (String) obj.get("username");
+                                        result += utente;
+                                        if (iterator.hasNext()) {
+                                            result += ", ";
+                                        }
                                     }
+
+                                    System.out.println(result);
+
+                                } catch (ParseException e) {
                                 }
-
-                                System.out.println(result);
-
-                            } catch (ParseException e) {
                             }
                         }
                         break;
                         case "mostra_punteggio": {
 
-                            String toServer = "mostra_punteggio/" + username;
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
-                            client.write(buffer);
+                            if(username== null){
+                                System.out.println("Need a login before");
+                            } else {
+                                String toServer = "mostra_punteggio/" + username;
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+                                client.write(buffer);
 
-                            System.out.println("MANDATO");
-                            ByteBuffer fer = ByteBuffer.allocate(1024);
-                            client.read(fer);
+                                ByteBuffer fer = ByteBuffer.allocate(1024);
+                                client.read(fer);
 
-                            fer.flip();
-                            String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
-                            System.out.println("Punteggio: " + risposta);
+                                fer.flip();
+                                String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
+                                System.out.println("Punteggio: " + risposta);
+                            }
                         }
                         break;
                         case "mostra_classifica": {
+                            if(username== null){
+                                System.out.println("Need a login before");
+                            } else {
+                                String toServer = "mostra_classifica/" + username;
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+                                client.write(buffer);
 
-                            String toServer = "mostra_classifica/" + username;
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
-                            client.write(buffer);
+                                ByteBuffer fer = ByteBuffer.allocate(1024);
+                                client.read(fer);
 
-                            ByteBuffer fer = ByteBuffer.allocate(1024);
-                            client.read(fer);
+                                fer.flip();
+                                String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
 
-                            fer.flip();
-                            String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
+                                JSONArray jsonArray;
+                                JSONParser parser = new JSONParser();
 
-                            JSONArray jsonArray;
-                            JSONParser parser = new JSONParser();
+                                try {
+                                    jsonArray = (JSONArray) parser.parse(risposta);
 
-                            try {
-                                jsonArray = (JSONArray) parser.parse(risposta);
-
-                                Iterator iterator = jsonArray.iterator();
-                                String result = "Classifica: ";
-                                while (iterator.hasNext()) {
-                                    JSONObject obj = (JSONObject) iterator.next();
-                                    String utente = (String) obj.get("username");
-                                    Long punteggio = (Long) obj.get("points");
-                                    result += utente + " " + punteggio;
-                                    if (iterator.hasNext()) {
-                                        result += ", ";
+                                    Iterator iterator = jsonArray.iterator();
+                                    String result = "Classifica: ";
+                                    while (iterator.hasNext()) {
+                                        JSONObject obj = (JSONObject) iterator.next();
+                                        String utente = (String) obj.get("username");
+                                        Long punteggio = (Long) obj.get("points");
+                                        result += utente + " " + punteggio;
+                                        if (iterator.hasNext()) {
+                                            result += ", ";
+                                        }
                                     }
+
+                                    System.out.println(result);
+
+                                } catch (ParseException e) {
                                 }
-
-                                System.out.println(result);
-
-                            } catch (ParseException e) {
                             }
                         }
                         break;
                         case "sfida": {
-                            String friend = elenco[1];
+                            if (username == null) {
+                                System.out.println("Need a login before");
+                            } else {
+                                String friend = elenco[1];
 
-                            String toServer = "sfida/" + username + "/" + friend;
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
-                            client.write(buffer);
+                                String toServer = "sfida/" + username + "/" + friend;
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+                                client.write(buffer);
 
-                            ByteBuffer fer = ByteBuffer.allocate(1024);
-                            client.read(fer);
+                                ByteBuffer fer = ByteBuffer.allocate(1024);
+                                client.read(fer);
 
-                            fer.flip();
-                            String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
-                            System.out.println(risposta);
+                                fer.flip();
+                                String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
+                                //System.out.println(risposta);
 
-                            if (risposta.contains("Scrivi")) {
-                                String[] lista = risposta.split(":");
-                                int newport = Integer.parseInt(lista[1]);
-                                System.out.println("nuova porta: " + newport);
-                                DatagramSocket clientSocket;
-                                InetAddress IPAddress;
-                                clientSocket = new DatagramSocket();
-                                IPAddress = InetAddress.getByName(host);
-
-
-                                String rip = "sfidante";
-
-                                byte[] sendData;
-                                sendData = rip.getBytes();
-                                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, newport);
-
-                                clientSocket.send(sendPacket);
-                                System.out.println(new String(sendData));
-                                byte[] receiveData = new byte[1024];
-
-                                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, newport);
-                                clientSocket.receive(receivePacket);
-                                System.out.println("QUI");
-                                System.out.println(new String(receiveData));
+                                if (risposta.contains("Scrivi")) {
+                                    String[] lista = risposta.split(":");
+                                    int newport = Integer.parseInt(lista[1]);
+                                    //System.out.println("nuova porta: " + newport);
+                                    DatagramSocket clientSocket;
+                                    InetAddress IPAddress;
+                                    clientSocket = new DatagramSocket();
+                                    IPAddress = InetAddress.getByName(host);
 
 
-                                ByteBuffer reader = ByteBuffer.allocate(1024);
-                                client.read(reader);
-                                reader.flip();
-                                String initsfida = StandardCharsets.UTF_8.decode(reader).toString();
-                                if (initsfida.contains("60000")) {
+                                    String rip = "sfidante";
 
-                                    System.out.println("QUI23");
-                                    String[] el = initsfida.split("/");
-                                    int timeout = Integer.parseInt(el[0]);
+                                    byte[] sendData;
+                                    sendData = rip.getBytes();
+                                    DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, newport);
 
-                                    int countWord = Integer.parseInt(el[1]);
+                                    clientSocket.send(sendPacket);
+                                    //System.out.println(new String(sendData));
+                                    byte[] receiveData = new byte[1024];
 
-                                    String nextWord = el[2];
-                                    Thread time = new Thread(new Timeout(timeout));
-                                    time.start();
-                                    int i = 0;
-                                    System.out.println("Via alla sfida di traduzione!");
-                                    System.out.println("Avete " + timeout + " secondi per tradurre correttamente " + countWord + " parole.");
+                                    DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, newport);
+                                    clientSocket.receive(receivePacket);
+                                    System.out.println(new String(receiveData));
 
-                                    boolean stayHere = false;
-                                    while (time.isAlive() && !stayHere) {
-                                        System.out.println("Challenge " + i + "/" + (countWord - 1) + ": " + nextWord);
-                                        System.out.printf(">");
-                                        String word = input.readLine();
-                                        System.out.println(word);
-                                        i = i + 1;
-                                        String risp = "parola/" + (i) + "/" + countWord + "/" + word;
-                                        reader = ByteBuffer.wrap(risp.getBytes());
-                                        if (!time.isAlive()) {
-                                            risp = "Tempo Scaduto";
+
+                                    ByteBuffer reader = ByteBuffer.allocate(1024);
+                                    client.read(reader);
+                                    reader.flip();
+                                    String initsfida = StandardCharsets.UTF_8.decode(reader).toString();
+                                    if (initsfida.contains("60000")) {
+
+                                        String[] el = initsfida.split("/");
+                                        int timeout = Integer.parseInt(el[0]);
+
+                                        int countWord = Integer.parseInt(el[1]);
+
+                                        String nextWord = el[2];
+                                        Thread time = new Thread(new Timeout(timeout));
+                                        time.start();
+                                        int i = 0;
+                                        System.out.println("Via alla sfida di traduzione!");
+                                        System.out.println("Avete " + timeout + " secondi per tradurre correttamente " + countWord + " parole.");
+
+                                        boolean stayHere = false;
+                                        while (time.isAlive() && !stayHere) {
+                                            System.out.println("Challenge " + i + "/" + (countWord - 1) + ": " + nextWord);
+                                            System.out.printf(">");
+                                            String word = input.readLine();
+                                            i = i + 1;
+                                            String risp = "parola/" + (i) + "/" + countWord + "/" + word;
                                             reader = ByteBuffer.wrap(risp.getBytes());
-                                            client.write(reader);
-                                            reader = ByteBuffer.allocate(1024);
-                                            client.read(reader);
-                                            reader.flip();
-                                            risp = StandardCharsets.UTF_8.decode(reader).toString();
-                                            System.out.println("Tempo Scaduto!");
-                                            System.out.println(risp);
-                                        } else {
-
-
-                                            client.write(reader);
-
-                                            reader = ByteBuffer.allocate(1024);
-                                            client.read(reader);
-                                            reader.flip();
-                                            risp = StandardCharsets.UTF_8.decode(reader).toString();
-
-                                            if (risp.contains("parola")) {
-                                                String[] sl = risp.split("/");
-
-                                                nextWord = sl[3];
-                                                System.out.println("QI");
-                                            } else {
-                                                stayHere = true;
+                                            if (!time.isAlive()) {
+                                                risp = "Tempo Scaduto";
+                                                reader = ByteBuffer.wrap(risp.getBytes());
+                                                client.write(reader);
+                                                reader = ByteBuffer.allocate(1024);
+                                                client.read(reader);
+                                                reader.flip();
+                                                risp = StandardCharsets.UTF_8.decode(reader).toString();
+                                                System.out.println("Tempo Scaduto!");
                                                 System.out.println(risp);
+                                            } else {
+
+
+                                                client.write(reader);
+
+                                                reader = ByteBuffer.allocate(1024);
+                                                client.read(reader);
+                                                reader.flip();
+                                                risp = StandardCharsets.UTF_8.decode(reader).toString();
+
+                                                if (risp.contains("parola")) {
+                                                    String[] sl = risp.split("/");
+
+                                                    nextWord = sl[3];
+                                                } else {
+                                                    stayHere = true;
+                                                    System.out.println(risp);
+                                                }
                                             }
                                         }
+
+
+                                    } else {
+                                        System.out.println(initsfida);
                                     }
 
-
                                 } else {
-                                    System.out.println(initsfida);
+                                    System.out.println(risposta);
                                 }
-
                             }
                         }
                         break;
@@ -504,7 +526,7 @@ public class MainClassClient {
                                 client.read(reader);
                                 reader.flip();
                                 String fina = StandardCharsets.UTF_8.decode(reader).toString();
-                                System.out.println(fina);
+                                //System.out.println(fina);
                                 if (fina.contains("parola") || fina.contains("60000")) {
                                     String[] el = fina.split("/");
                                     int timeoutt = Integer.parseInt(el[0]);
@@ -521,7 +543,7 @@ public class MainClassClient {
                                             System.out.println("Challenge " + i + "/" + (countWord - 1) + ": " + nextWord);
                                             System.out.printf(">");
                                             String word = input.readLine();
-                                            System.out.println(word);
+                                            //System.out.println(word);
                                             i = i + 1;
                                             String risp = "parola/" + (i) + "/" + countWord + "/" + word;
                                             reader = ByteBuffer.wrap(risp.getBytes());
@@ -548,14 +570,14 @@ public class MainClassClient {
                                                 if (risp.contains("parola")) {
                                                     String[] sl = risp.split("/");
 
-                                                    System.out.println(risp);
+                                                    //System.out.println(risp);
                                                     nextWord = sl[3];
                                                 } else {
                                                     stayHere = true;
                                                     System.out.println(risp);
 
                                                 }
-                                                System.out.println("QI");
+                                                //System.out.println("QI");
                                             }
                                         }
                                     } catch (IOException e) {
@@ -640,7 +662,7 @@ public class MainClassClient {
         input.close();
     }
     public static void runExec(int nport){
-        System.out.println("OOOK");
+        //System.out.println("OOOK");
         port = nport;
         sfidato.set(true);
         t = new Thread( new Exec(port));
@@ -652,7 +674,7 @@ public class MainClassClient {
 
         //lock.lock();
 
-            System.out.println("OOOOO");
+            //System.out.println("OOOOO");
 
 
 
@@ -672,9 +694,9 @@ public class MainClassClient {
             } catch (IOException e) {
 
             }
-            System.out.println(port);
+            //System.out.println(port);
 
-            System.out.println(new String(sfida.getBytes()));
+            //System.out.println(new String(sfida.getBytes()));
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, port);
 
 
@@ -683,153 +705,22 @@ public class MainClassClient {
             } catch (IOException e) {
 
             }
-            System.out.println("PORCI");
+            //System.out.println("PORCI");
 
             String ricevuta = new String(receiveData);
 
-            System.out.println(ricevuta);
+            //System.out.println(ricevuta);
             String[] elenco = ricevuta.split("/");
             int tempo = 10000;
 
             timeout = new Thread(new Timeout(tempo));
             timeout.start();
-            System.out.println("QUI");
+            //System.out.println("QUI");
 
             System.out.println(elenco[0]);
 
             System.out.println("1. accetta sfida");
             System.out.println("2. rifiuta sfida");
-            String in = "1";
-
-            /*
-            try {
-                in = input.readLine();
-            } catch (IOException e) {
-
-            }
-            System.out.println("QUI2");
-*/
-           // int ok = 0;
-
-            /*
-            if (timeout.isAlive()) {
-                switch (in) {
-                    case "1":
-                        sendPacket = new DatagramPacket("ok".getBytes(), "ok".length(), IPAddress, port);
-                        try {
-                            clientSocket.send(sendPacket);
-                            //input.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        ok = 1;
-                        break;
-                    case "2":
-                        sendPacket = new DatagramPacket("not ok".getBytes(), "not ok".length(), IPAddress, port);
-                        try {
-                            clientSocket.send(sendPacket);
-                            //input.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        break;
-
-                }
-            } else {
-                sendPacket = new DatagramPacket("tempo scaduto per accettare".getBytes(), "tempo scaduto per accettare".length(), IPAddress, port);
-                try {
-                    clientSocket.send(sendPacket);
-                    //input.close();
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                System.out.println("Tempo scaduto per accettare");
-            }
-
-
-             */
-            /*if (ok == 1) {
-                System.out.println("DIOCANE");
-                SocketAddress address = new InetSocketAddress(host, port);
-                SocketChannel client = null;
-                try {
-                    client = SocketChannel.open(address);
-
-                } catch (IOException e) {
-
-                }
-
-                ByteBuffer reader = ByteBuffer.allocate(1024);
-
-                try {
-
-                    System.out.println("FERMO");
-                    client.read(reader);
-                    System.out.println("gionni");
-                } catch (IOException e) {
-                    System.out.println("afato");
-                }
-
-                reader.flip();
-                String initsfida = StandardCharsets.UTF_8.decode(reader).toString();
-
-                System.out.println(initsfida);
-                String[] el = initsfida.split("/");
-                int timeoutt = Integer.parseInt(el[0]);
-
-                int countWord = Integer.parseInt(el[1]);
-
-                String nextWord = el[2];
-                Thread time = new Thread(new Timeout(timeoutt));
-                time.start();
-                int i = 0;
-
-                    while (time.isAlive() && i < countWord) {
-                        System.out.println("Challenge " + i + "/" + countWord + ": " + nextWord);
-                        String risp = null;
-                        String word = null;
-
-                        word = input.readLine();
-
-                        System.out.println(word);
-                        i = i + 1;
-                        risp = "parola/" + i + "/" + countWord + "/" + word;
-
-                        reader = ByteBuffer.wrap(risp.getBytes());
-                        if (!time.isAlive()) {
-                            risp = "Tempo Scaduto";
-                            reader = ByteBuffer.wrap(risp.getBytes());
-                            client.write(reader);
-                        } else {
-                            client.write(reader);
-
-                            reader = ByteBuffer.allocate(1024);
-                            client.read(reader);
-
-
-                            reader.flip();
-                            risp = StandardCharsets.UTF_8.decode(reader).toString();
-
-                            String[] sl = risp.split("/");
-
-                            nextWord = sl[3];
-
-
-                        }
-                    }
-
-                    reader = ByteBuffer.allocate(1024);
-
-                    client.read(reader);
-
-
-                reader.flip();
-                System.out.println(StandardCharsets.UTF_8.decode(reader).toString());
-
-
-            }
-             */
 
 
     }

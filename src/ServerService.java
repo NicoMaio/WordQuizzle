@@ -23,6 +23,7 @@ public class ServerService implements Runnable {
     private int port;
     public TreeMap<String, Utente> registeredList;
     private TreeMap<String,SelectionKey> usersList;
+    private Vector<String> gamers;
     private ThreadPoolExecutor threadPoolExecutor;
     private static ServerCallBImpl server;
     private static Selector selector;
@@ -32,8 +33,9 @@ public class ServerService implements Runnable {
         registeredList = albero;
         this.fileJsonName = fileJsonName;
         usersList = online;
+        gamers = new Vector<>();
         LinkedBlockingQueue<Runnable> linkedlist = new LinkedBlockingQueue<>();
-        threadPoolExecutor = new ThreadPoolExecutor(0,5,500, TimeUnit.MILLISECONDS,linkedlist);
+        threadPoolExecutor = new ThreadPoolExecutor(0,30,500, TimeUnit.MILLISECONDS,linkedlist);
         this.server = server;
     }
 
@@ -194,7 +196,7 @@ public class ServerService implements Runnable {
         }
         if(bytes >0) {
 
-            Worker work = new Worker(registeredList, usersList,key);
+            Worker work = new Worker(registeredList, usersList,key,gamers);
             threadPoolExecutor.execute(work);
         }
     }
