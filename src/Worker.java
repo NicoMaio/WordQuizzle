@@ -15,10 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.IntStream;
 
 public class Worker implements Runnable {
@@ -36,11 +32,8 @@ public class Worker implements Runnable {
     private static SelectionKey sfidato1;
     private static int sfidat;
     private static int sfidant;
-    private static AtomicBoolean sfidante2;
-    private static AtomicBoolean sfidato2;
     private boolean endingSfida;
     static SocketChannel client;
-    private static Lock lock;
 
     private static int BUF_DIM = 1024;
     public Worker(TreeMap<String, Utente> registeredList,
@@ -49,11 +42,8 @@ public class Worker implements Runnable {
         this.key = key;
         this.gamers = gamers;
         Worker.registeredList = registeredList;
-        lock = new ReentrantLock();
         sfidat = 5;
         sfidant = 5;
-        sfidante2= new AtomicBoolean();
-        sfidato2= new AtomicBoolean();
         endingSfida= false;
     }
 
@@ -444,18 +434,15 @@ public class Worker implements Runnable {
 
                                     try {
                                         clientkey = channel.register(selector, SelectionKey.OP_READ);
-                                        clientkey.attach(new Auxiliar(uo, friend, port));
+                                        clientkey.attach(new Auxiliar(uo, friend, port,null));
                                     } catch (ClosedChannelException cce) {
                                         cce.printStackTrace();
                                     }
                                     System.out.println(friend);
 
                                     ServerService.callBack(friend, port);
-                                    //amico.interestOps(SelectionKey.OP_READ);
-                                    lock.lock();
                                     sfidant = 5;
                                     sfidat = 5;
-                                    lock.unlock();
                                     while (!endingSfida && (sfidant == 5 && sfidat == 5)) {
                                         System.out.println("Ending = " + endingSfida + " Sfidant,Sfidat = " + sfidant + " , " + sfidat);
                                         if (selector.isOpen()) {
@@ -507,10 +494,8 @@ public class Worker implements Runnable {
 
                                         }
 
-                                        lock.lock();
                                         sfidant = 0;
                                         sfidat = 0;
-                                        lock.unlock();
 
                                         // seleziono le parole da dizionario e le traduco per iniziare sfida
                                         // seleziono tempo per sfida e lo invio insieme con la prima parola,
@@ -534,8 +519,8 @@ public class Worker implements Runnable {
 
                                         }
 
-                                        Auxiliar aux1 = new Auxiliar(elenco[1], elenco[2], port);
-                                        Auxiliar aux2 = new Auxiliar(elenco[1], elenco[2], port);
+                                        Auxiliar aux1 = new Auxiliar(elenco[1], elenco[2], port,sfidato1);
+                                        Auxiliar aux2 = new Auxiliar(elenco[1], elenco[2], port,sfidante1);
 
                                         aux1.setWords(words);
                                         aux2.setWords(words);
@@ -571,10 +556,8 @@ public class Worker implements Runnable {
                                         can2.write(aux2.resp);
 
                                         //System.out.println("QUIIIII");
-                                        lock.lock();
                                         sfidant = 5;
                                         sfidat = 5;
-                                        lock.unlock();
                                         sfidante1.interestOps(SelectionKey.OP_READ);
                                         sfidato1.interestOps(SelectionKey.OP_READ);
                                     }
@@ -626,15 +609,19 @@ public class Worker implements Runnable {
     }
 
     public static void startResponse(int ok){
+
+
+        Auxiliar tempSfidante;
+        Auxiliar tempSfidato;
         if(ok == 1){
             // calcolo risultati e invio risposto ai due giocatori.
-            Auxiliar tempSfidante = (Auxiliar)sfidante1.attachment();
+            tempSfidante = (Auxiliar)sfidante1.attachment();
+            tempSfidato = (Auxiliar) tempSfidante.altro.attachment();
             int puntsfidant = tempSfidante.getPunteggio();
             int paroleOkSfidant = tempSfidante.getParoleOk();
             int paroleNotOkSfidant = tempSfidante.getParoleNotOk();
             int paroleNotTraSfidant = tempSfidante.getParoleNotTra();
 
-            Auxiliar tempSfidato = (Auxiliar)sfidato1.attachment();
             int puntsfidat = tempSfidato.getPunteggio();
             int paroleOkSfidat = tempSfidato.getParoleOk();
             int paroleNotOkSfidat = tempSfidato.getParoleNotOk();
@@ -689,6 +676,15 @@ public class Worker implements Runnable {
 
             //System.out.println("QUIAOSOAS");
             ByteBuffer writer = ByteBuffer.wrap(respp.getBytes());
+            tempSfidante = (Auxiliar) sfidante.attachment();
+            tempSfidato = (Auxiliar) sfidato.attachment();
+            synchronized (gamers){
+                gamers.remove(tempSfidante.getSfidante());
+                System.out.println("Riattivato per sfide "+tempSfidante.getSfidante());
+                gamers.remove(tempSfidato.getSfidato());
+                System.out.println("Riattivato per sfide "+tempSfidato.getSfidato());
+
+            }
             try {
                 client.write(writer);
             }catch (IOException e){
@@ -734,9 +730,6 @@ public class Worker implements Runnable {
                 ///System.out.println("PRMA DI ENDONE "+id);
 
                 endOne(key, temp, id);
-                System.out.println("PRMA DI INVIARE RISPOSTA");
-                System.out.println("sfidant, sfidat "+sfidant+", "+sfidat);
-                System.out.println("sfidante: "+sfidante2.get()+"sfidato: "+sfidato2.get());
                 Auxiliar aux =(Auxiliar) sfidante1.attachment();
                 Auxiliar aux2 = (Auxiliar)sfidato1.attachment();
                 if(aux2.fine == 1 &&  aux.fine==1){
@@ -849,6 +842,7 @@ public class Worker implements Runnable {
         private int paroleNotTra;
         int typeOp;
         int fine;
+        SelectionKey altro;
 
         private int id;
 
@@ -859,7 +853,7 @@ public class Worker implements Runnable {
          *
          * */
 
-        public Auxiliar(String sfidante,String sfidato,int porta) {
+        public Auxiliar(String sfidante,String sfidato,int porta,SelectionKey altro) {
             req = ByteBuffer.allocate(BUF_DIM);
             this.sfidante = sfidante;
             this.sfidato = sfidato;
@@ -870,6 +864,7 @@ public class Worker implements Runnable {
             this.porta = porta;
             id = 0;
             fine = 0;
+            this.altro = altro;
         }
 
         public void clearAll(){
@@ -1074,21 +1069,15 @@ public class Worker implements Runnable {
     private void endOne(SelectionKey key, Auxiliar temp1, int id1) {
         switch (id1){
             case 1:
-                lock.lock();
                 sfidant = 0;
-                lock.unlock();
                 sfidante1 = key;
 
-                sfidante2.set(true);
                 System.out.println("SFIDANTE FINISCE");
                 temp1.fine = 1;
                 sfidante1.attach(temp1);
                 break;
             case 2:
-                lock.lock();
                 sfidat = 0;
-                lock.unlock();
-                sfidato2.set(true);
                 System.out.println("SFIDATO FINISCE");
                 sfidato1 = key;
                 temp1.fine = 1;
@@ -1156,10 +1145,8 @@ public class Worker implements Runnable {
         if(!risp.contains("parola")){
             if(risp.contains("sfida non accettata")){
                 startResponse(0);
-                lock.lock();
                 sfidant = 2;
                 sfidat = 2;
-                lock.unlock();
             }
             try {
 
@@ -1176,8 +1163,8 @@ public class Worker implements Runnable {
             if(risp.contains("sfida non accettata")){
 
                 key.cancel();
-                sfidante.cancel();
-                sfidato.cancel();
+                //sfidante.cancel();
+                //sfidato.cancel();
                 try {
                     selector.close();
                 }catch (IOException e){

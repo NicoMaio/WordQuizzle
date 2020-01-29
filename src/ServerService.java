@@ -105,7 +105,7 @@ public class ServerService implements Runnable {
                         // registro OP_READ ke
                         if(client != null) {
                             SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
-                            clientkey.attach(new Worker.Auxiliar("","",0));
+                            clientkey.attach(new Worker.Auxiliar("","",0,null));
                         }
 
 
