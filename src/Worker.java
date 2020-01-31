@@ -15,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.IntStream;
 
 public class Worker implements Runnable {
@@ -34,13 +36,17 @@ public class Worker implements Runnable {
     private static int sfidant;
     private boolean endingSfida;
     static SocketChannel client;
+    private Counters counters;
+
 
     private static int BUF_DIM = 1024;
     public Worker(TreeMap<String, Utente> registeredList,
-                  TreeMap<String, SelectionKey> usersList,SelectionKey key, Vector<String> gamers) {
+                  TreeMap<String, SelectionKey> usersList,SelectionKey key,
+                  Vector<String> gamers,Counters counters) {
         this.usersList = usersList;
         this.key = key;
         this.gamers = gamers;
+        this.counters = counters;
         Worker.registeredList = registeredList;
         sfidat = 5;
         sfidant = 5;
@@ -392,6 +398,7 @@ public class Worker implements Runnable {
                                     gamers.add(uo);
                                 }
 
+
                                 ServerService.dontRead(key, amico);
 
                                 Random rand = new Random();
@@ -501,7 +508,7 @@ public class Worker implements Runnable {
                                         // seleziono tempo per sfida e lo invio insieme con la prima parola,
                                         // lato client settaranno il loro thread Timeout.
 
-                                        int K = rand.nextInt(K_BOUND) + 1;
+                                        int K = Math.abs(rand.nextInt(K_BOUND)) + 1;
                                         System.out.println("K è " + K);
                                         Path path = Paths.get(".");
                                         Path JsonNioPath = path.resolve(dizionario);
@@ -558,6 +565,8 @@ public class Worker implements Runnable {
                                         //System.out.println("QUIIIII");
                                         sfidant = 5;
                                         sfidat = 5;
+                                        counters.resetPoints(elenco[1]);
+                                        counters.resetPoints(elenco[2]);
                                         sfidante1.interestOps(SelectionKey.OP_READ);
                                         sfidato1.interestOps(SelectionKey.OP_READ);
                                     }
@@ -608,67 +617,67 @@ public class Worker implements Runnable {
         return;
     }
 
-    public static void startResponse(int ok){
+    public void startResponse(int ok,SelectionKey key){
 
 
-        Auxiliar tempSfidante;
-        Auxiliar tempSfidato;
+        Auxiliar temp = (Auxiliar) key.attachment();
+        String sfidato = temp.getSfidato();
+        String sfidante = temp.getSfidante();
         if(ok == 1){
             // calcolo risultati e invio risposto ai due giocatori.
-            tempSfidante = (Auxiliar)sfidante1.attachment();
-            tempSfidato = (Auxiliar) tempSfidante.altro.attachment();
-            int puntsfidant = tempSfidante.getPunteggio();
-            int paroleOkSfidant = tempSfidante.getParoleOk();
-            int paroleNotOkSfidant = tempSfidante.getParoleNotOk();
-            int paroleNotTraSfidant = tempSfidante.getParoleNotTra();
+            int[] punteggioSfidante = counters.getResults(sfidante);
+            int[] punteggioSfidato = counters.getResults(sfidato);
+            int puntsfidant = punteggioSfidante[3];
+            int paroleOkSfidant = punteggioSfidante[0];
+            int paroleNotOkSfidant = punteggioSfidante[1];
+            int paroleNotTraSfidant = punteggioSfidante[2];
 
-            int puntsfidat = tempSfidato.getPunteggio();
-            int paroleOkSfidat = tempSfidato.getParoleOk();
-            int paroleNotOkSfidat = tempSfidato.getParoleNotOk();
-            int paroleNotTraSfidat = tempSfidato.getParoleNotTra();
-
+            int puntsfidat = punteggioSfidato[3];
+            int paroleOkSfidat = punteggioSfidato[0];
+            int paroleNotOkSfidat = punteggioSfidato[1];
+            int paroleNotTraSfidat = punteggioSfidato[2];
             String risp1,risp2;
             if(puntsfidat < puntsfidant){
                 int finalpunt = puntsfidant+3;
                 //System.out.println("here");
-                sendToWinner(sfidante1,tempSfidante, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat, finalpunt);
+                sendToWinner(sfidante1,temp, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat, finalpunt);
 
                 synchronized (registeredList){
                     //System.out.println("SFIDANTE: "+tempSfidante.sfidante+". SFIDATO: "+tempSfidato.sfidato+" punt: "+puntsfidat);
-                    registeredList.get(tempSfidante.sfidante).setPoint(finalpunt);
-                    registeredList.get(tempSfidato.sfidato).setPoint(puntsfidat);
+                    registeredList.get(sfidante).setPoint(finalpunt);
+                    registeredList.get(sfidato).setPoint(puntsfidat);
                 }
 
-                sendToLoser(sfidato1,puntsfidant, tempSfidato, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat);
+                sendToLoser(sfidato1,puntsfidant, temp, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat);
 
 
             } else if(puntsfidant == puntsfidat){
-                sendRisultato(sfidante1,tempSfidante, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat);
+                sendRisultato(sfidante1,temp, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat);
                 //System.out.println("E QUI");
 
                 synchronized (registeredList){
-                    registeredList.get(tempSfidante.sfidante).setPoint(puntsfidant);
-                    registeredList.get(tempSfidato.sfidato).setPoint(puntsfidat);
+                    registeredList.get(sfidante).setPoint(puntsfidant);
+                    registeredList.get(sfidato).setPoint(puntsfidat);
                 }
 
-                sendRisultato(sfidato1,tempSfidato, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat, puntsfidant);
+                sendRisultato(sfidato1,temp, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat, puntsfidant);
 
             } else {
                 int finalpunt = puntsfidat+3;
-                sendToLoser(sfidante1,puntsfidat, tempSfidante, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant);
+                sendToLoser(sfidante1,puntsfidat, temp, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant);
 
                 //System.out.println("ENTRO ANCHE QUI");
                 synchronized (registeredList){
-                    registeredList.get(tempSfidante.sfidante).setPoint(puntsfidant);
-                    registeredList.get(tempSfidato.sfidato).setPoint(finalpunt);
+                    registeredList.get(sfidante).setPoint(puntsfidant);
+                    registeredList.get(sfidato).setPoint(finalpunt);
                 }
 
-                sendToWinner(sfidato1,tempSfidato, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat, puntsfidant, finalpunt);
+                sendToWinner(sfidato1,temp, puntsfidat, paroleOkSfidat, paroleNotOkSfidat, paroleNotTraSfidat, puntsfidant, finalpunt);
 
             }
             synchronized (gamers){
-                gamers.remove(tempSfidante.getSfidante());
-                gamers.remove(tempSfidato.getSfidato());
+                gamers.remove(sfidante);
+                gamers.remove(sfidato);
             }
         } else {
 
@@ -676,14 +685,9 @@ public class Worker implements Runnable {
 
             //System.out.println("QUIAOSOAS");
             ByteBuffer writer = ByteBuffer.wrap(respp.getBytes());
-            tempSfidante = (Auxiliar) sfidante.attachment();
-            tempSfidato = (Auxiliar) sfidato.attachment();
             synchronized (gamers){
-                gamers.remove(tempSfidante.getSfidante());
-                System.out.println("Riattivato per sfide "+tempSfidante.getSfidante());
-                gamers.remove(tempSfidato.getSfidato());
-                System.out.println("Riattivato per sfide "+tempSfidato.getSfidato());
-
+                gamers.remove(sfidante);
+                gamers.remove(sfidato);
             }
             try {
                 client.write(writer);
@@ -712,28 +716,45 @@ public class Worker implements Runnable {
 
             // calcolo risultato.
             Auxiliar temp = (Auxiliar) key.attachment();
-            if(word.equals(" ")){
-                temp.setPunteggio(0);
-                temp.setParoleNOtTra(1);
-            } else if(temp.containsTrad(word)){
-                temp.setPunteggio(2);
-                temp.setParoleOk(1);
-            } else {
-                temp.setPunteggio(-1);
-                temp.setParoleNotOk(1);
+            int id = temp.getId();
+            switch (id){
+                case 1:
+                    if(word.equals(" ")){
+                        counters.setAbsent(temp.getSfidante());
+                    } else if (temp.containsTrad(word)){
+                        counters.setCorrect(temp.getSfidante());
+                    } else {
+                        counters.setUnCorrect(temp.getSfidante());
+                    }
+                    break;
+                case 2:
+                    if(word.equals(" ")){
+                        counters.setAbsent(temp.getSfidato());
+                    } else if (temp.containsTrad(word)){
+                        counters.setCorrect(temp.getSfidato());
+                    } else {
+                        counters.setUnCorrect(temp.getSfidato());
+                    }
+                    break;
             }
 
             //System.out.println("punteggio parole corrette: "+temp.getParoleOk());
             if(actual>=total){
-                int id = temp.getId();
                 key.attach(temp);
                 ///System.out.println("PRMA DI ENDONE "+id);
 
+                switch (id){
+                    case 1:
+                        counters.setEndChallenge(temp.getSfidante());
+                        break;
+                    case 2:
+                        counters.setEndChallenge(temp.getSfidato());
+                        break;
+                }
                 endOne(key, temp, id);
-                Auxiliar aux =(Auxiliar) sfidante1.attachment();
-                Auxiliar aux2 = (Auxiliar)sfidato1.attachment();
-                if(aux2.fine == 1 &&  aux.fine==1){
-                    startResponse(1);
+
+                if(counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato())==1){
+                    startResponse(1,key);
 
                     ServerService.saveUsersStats(registeredList);
                 }
@@ -755,10 +776,16 @@ public class Worker implements Runnable {
             int id = temp.getId();
             key.attach(temp);
             endOne(key,temp,id);
-            Auxiliar aux =(Auxiliar) sfidante1.attachment();
-            Auxiliar aux2 = (Auxiliar)sfidato1.attachment();
-            if(aux2.fine == 1 &&  aux.fine==1){
-                startResponse(1);
+            switch (id){
+                case 1:
+                    counters.setEndChallenge(temp.getSfidante());
+                    break;
+                case 2:
+                    counters.setEndChallenge(temp.getSfidato());
+                    break;
+            }
+            if(counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato())==1){
+                startResponse(1,key);
 
                 ServerService.saveUsersStats(registeredList);
             }
@@ -770,7 +797,7 @@ public class Worker implements Runnable {
         String risp2;
         risp2 = "Hai tradotto correttamente "+paroleOkSfidat+", ne hai sbagliate "+paroleNotOkSfidat+" e non hai risposto a "+paroleNotTraSfidat+"."
                 +"\nHai totalizzato "+puntsfidat+" punti."+
-                "\nIl tuo avversario ha totatlizzato "+(puntsfidant +3)+" punti."+
+                "\nIl tuo avversario ha totalizzato "+(puntsfidant +3)+" punti."+
                 "\nHai perso la sfida...";
         tempSfidato.resp = ByteBuffer.wrap(risp2.getBytes());
         SocketChannel chan2 = (SocketChannel) key.channel();
@@ -786,7 +813,7 @@ public class Worker implements Runnable {
         String risp1;
         risp1 = "Hai tradotto correttamente "+paroleOkSfidant+", ne hai sbagliate "+paroleNotOkSfidant+" e non hai risposto a "+paroleNotTraSfidant+"."
                 +"\nHai totalizzato "+puntsfidant+" punti."+
-                "\nIl tuo avversario ha totatlizzato "+puntsfidat+" punti."+
+                "\nIl tuo avversario ha totalizzato "+puntsfidat+" punti."+
                 "\nCongratulazioni, hai vinto! Hai guadagnato 3 punti extra, per un totale di "+finalpunt+" punti!";
         tempSfidante.resp = ByteBuffer.wrap(risp1.getBytes());
         SocketChannel chan2 = (SocketChannel) key.channel();
@@ -801,7 +828,7 @@ public class Worker implements Runnable {
         String risp1;
         risp1 = "Hai tradotto correttamente "+paroleOkSfidant+", ne hai sbagliate "+paroleNotOkSfidant+" e non hai risposto a "+paroleNotTraSfidant+"."
                 +"\nHai totalizzato "+puntsfidant+" punti."+
-                "\nIl tuo avversario ha totatlizzato "+puntsfidat+" punti."+
+                "\nIl tuo avversario ha totalizzato "+puntsfidat+" punti."+
                 "\nLa sfida è finita in parità";
         tempSfidante.resp = ByteBuffer.wrap(risp1.getBytes());
         SocketChannel chan2 = (SocketChannel) key.channel();
@@ -1144,7 +1171,7 @@ public class Worker implements Runnable {
         System.out.println(aux.id);
         if(!risp.contains("parola")){
             if(risp.contains("sfida non accettata")){
-                startResponse(0);
+                startResponse(0,key);
                 sfidant = 2;
                 sfidat = 2;
             }

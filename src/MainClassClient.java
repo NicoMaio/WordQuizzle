@@ -433,17 +433,18 @@ public class MainClassClient {
                                         String nextWord = el[2];
                                         Thread time = new Thread(new Timeout(timeout));
                                         time.start();
-                                        int i = 0;
+                                        int i = 1;
                                         System.out.println("Via alla sfida di traduzione!");
                                         System.out.println("Avete " + timeout + " secondi per tradurre correttamente " + countWord + " parole.");
 
                                         boolean stayHere = false;
                                         while (time.isAlive() && !stayHere) {
-                                            System.out.println("Challenge " + i + "/" + (countWord - 1) + ": " + nextWord);
+                                            System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
                                             System.out.printf(">");
                                             String word = input.readLine();
-                                            i = i + 1;
                                             String risp = "parola/" + (i) + "/" + countWord + "/" + word;
+                                            i = i + 1;
+
                                             reader = ByteBuffer.wrap(risp.getBytes());
                                             if (!time.isAlive()) {
                                                 risp = "Tempo Scaduto";
@@ -536,16 +537,17 @@ public class MainClassClient {
                                     String nextWord = el[2];
                                     Thread time = new Thread(new Timeout(timeoutt));
                                     time.start();
-                                    int i = 0;
+                                    int i = 1;
                                     boolean stayHere = false;
                                     try {
                                         while (time.isAlive() && !stayHere) {
-                                            System.out.println("Challenge " + i + "/" + (countWord - 1) + ": " + nextWord);
+                                            System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
                                             System.out.printf(">");
                                             String word = input.readLine();
                                             //System.out.println(word);
-                                            i = i + 1;
+
                                             String risp = "parola/" + (i) + "/" + countWord + "/" + word;
+                                            i = i + 1;
                                             reader = ByteBuffer.wrap(risp.getBytes());
                                             if (!time.isAlive()) {
                                                 risp = "Tempo Scaduto";

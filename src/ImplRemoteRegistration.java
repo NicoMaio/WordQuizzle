@@ -7,10 +7,12 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
 
     final TreeMap<String, Utente> registeredList;
 
-    public ImplRemoteRegistration(TreeMap<String, Utente> albero) throws RemoteException {
+    private Counters counters;
+    public ImplRemoteRegistration(TreeMap<String, Utente> albero,Counters counters) throws RemoteException {
 
         registeredList = albero;
 
+        this.counters = counters;
     }
 
     public int registra(String username, String password) throws RemoteException {
@@ -21,6 +23,7 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
 
             registeredList.put(username, new Utente(username, password,0));
         }
+        counters.addUser(username);
 
         ServerService.saveUsersStats(registeredList);
 

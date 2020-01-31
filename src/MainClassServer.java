@@ -40,6 +40,7 @@ public class MainClassServer {
             }
         });
 
+        Counters counters = new Counters();
         Path path = Paths.get(".");
         Path JsonNioPath = path.resolve(fileJsonName);
         if(Files.exists(JsonNioPath)){
@@ -48,6 +49,7 @@ public class MainClassServer {
 
                 elements = readJson(fileJsonName);
                 buildRegistered(registeredList,elements);
+                buildCounters(counters,elements);
 
             } catch (IOException e){
                 e.printStackTrace();
@@ -57,7 +59,7 @@ public class MainClassServer {
         try {
 
 
-            ImplRemoteRegistration register = new ImplRemoteRegistration(registeredList);
+            ImplRemoteRegistration register = new ImplRemoteRegistration(registeredList,counters);
             LocateRegistry.createRegistry(PORT_FOR_RSERVICE);
 
             Registry r = LocateRegistry.getRegistry(PORT_FOR_RSERVICE);
@@ -92,7 +94,7 @@ public class MainClassServer {
         }
 
 
-        Thread thread = new Thread(new ServerService(port,registeredList,usersList,fileJsonName,server));
+        Thread thread = new Thread(new ServerService(port,registeredList,usersList,fileJsonName,server,counters));
 
         thread.start();
 
@@ -142,6 +144,26 @@ public class MainClassServer {
         return result;
     }
 
+    public static void buildCounters(Counters counters,String result){
+        JSONArray jsonArray;
+        JSONParser parser = new JSONParser();
+
+        try{
+            jsonArray = (JSONArray) parser.parse(result);
+            // ottengo array con tutti gli utenti
+
+            Iterator<JSONObject> iterator = jsonArray.iterator();
+            while(iterator.hasNext()){
+                JSONObject obj = iterator.next();
+                String username =(String)obj.get("username");
+
+                counters.addUser(username);
+
+            }
+        }catch (ParseException e){
+            e.printStackTrace();
+        }
+    }
     public static void buildRegistered(TreeMap<String, Utente> registeredList, String result){
 
         JSONArray jsonArray;

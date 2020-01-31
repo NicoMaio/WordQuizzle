@@ -27,12 +27,15 @@ public class ServerService implements Runnable {
     private ThreadPoolExecutor threadPoolExecutor;
     private static ServerCallBImpl server;
     private static Selector selector;
+    private Counters counters;
 
-    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online, String fileJsonName,ServerCallBImpl server) {
+    public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online,
+                         String fileJsonName,ServerCallBImpl server, Counters counters) {
         this.port = port;
         registeredList = albero;
         this.fileJsonName = fileJsonName;
         usersList = online;
+        this.counters = counters;
         gamers = new Vector<>();
         LinkedBlockingQueue<Runnable> linkedlist = new LinkedBlockingQueue<>();
         threadPoolExecutor = new ThreadPoolExecutor(0,30,500, TimeUnit.MILLISECONDS,linkedlist);
@@ -42,7 +45,7 @@ public class ServerService implements Runnable {
 
     public void run() {
 
-        System.out.println("Listening for Worker.Auxiliarnection on port "+port+" ...");
+        System.out.println("Listening for connection on port "+port+" ...");
 
         ServerSocketChannel serverChannel;
         //Selector selector;
@@ -196,7 +199,7 @@ public class ServerService implements Runnable {
         }
         if(bytes >0) {
 
-            Worker work = new Worker(registeredList, usersList,key,gamers);
+            Worker work = new Worker(registeredList, usersList,key,gamers,counters);
             threadPoolExecutor.execute(work);
         }
     }
