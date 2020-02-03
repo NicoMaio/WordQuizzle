@@ -1,5 +1,8 @@
-import java.rmi.RemoteException;
-
+/**
+ * @author Nicolò Maio
+ *
+ * Classe Exec del task eseguito da un client in caso di ricezione richiesta di sfida
+ * */
 public class Exec implements Runnable {
 
     int port;

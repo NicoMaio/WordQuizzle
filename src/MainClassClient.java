@@ -1,12 +1,14 @@
+/**
+ * @author Nicolò Maio
+ *
+ * MainClassClientr: Classe principale del Client di WordQuizzle.
+ *
+ * */
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -18,35 +20,49 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Iterator;
-import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class MainClassClient {
 
     private static int DEFAULT_PORT = 13200;
+    // numero di default della porta su cui attende il server.
+
     private static int PORT_FOR_RSERVICE = 9999;
+    // numero di porta per servizio RMI che gestisce l'operazione di registrazione.
+
     private static String host;
+    // stringa contenente nome dell'host del server.
+
     private static AtomicBoolean close;
+    // atomicBoolean usata per gestire terminazione del server.
+
     final static BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+    // bufferedReader usato per ricevere in input richieste dall'utente.
+
     public static AtomicBoolean sfidato;
+    // atomicBoolean usata per capire se l'utente è sotto sfida.
+
     public static int port;
+    // numero di porta al quale dovrà inviare le richieste il client.
+
     public static Thread t;
-    private static Lock lock;
+    // thread che eseguirà al momento della richiesta ad una sfida il modulo per accettare o rifiutare richiesta di sfida.
+
     private static DatagramSocket clientSocket;
+    // datagramSocket sul quale il client riceverà richiesta UDP in caso di sfida
+
     private static InetAddress IPAddress;
+    // IP address del server usato per i messaggi UDP.
+
     private static Thread timeout;
+    // thread Timeout usato per gestire i timeout della sfida.
 
-
-    private static JTextField xInput,yInput;
     public static void main(String[] args) throws Exception {
         // MainClassClient host port
         // host: nome del host Server di WordQuizzle.
         // port: numero di porta su cui è in attesa il server.
 
+        /* ---------------- Sistemo hostname e porta ---------------- */
         if (args.length == 0) {
             System.err.println("Usage: java MainClassClient host port");
             return;
@@ -54,87 +70,54 @@ public class MainClassClient {
 
         host = args[0];
 
-
         try {
             port = Integer.parseInt(args[1]);
         } catch (RuntimeException e) {
             port = DEFAULT_PORT;
         }
+        /* ---------------------------------------------------------- */
 
-        lock = new ReentrantLock() ;
+        /* ---------------- Imposto servizio RMI per operazione di registrazione ---------------- */
         Registry reg = LocateRegistry.getRegistry(host, PORT_FOR_RSERVICE);
 
         RemoteRegistration registration = (RemoteRegistration) reg.lookup(RemoteRegistration.SERVICE_NAME);
+        /* -------------------------------------------------------------------------------------- */
 
+        /* ---------------- Imposto servizio RMI per operazione di callback in caso di richiesta per sfida ---------------- */
         Registry registry = LocateRegistry.getRegistry(host, 5000);
         ServerInterface server = (ServerInterface) registry.lookup(ServerInterface.SERVICE_NAME);
 
         NotifyEventInterface callbackObj = new NotifyEventImpl();
         NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(callbackObj, 0);
-        server.registerForCallback("Michele", stub);
+        /* ---------------------------------------------------------------------------------------------------------------- */
+
+        // Inizializzo AtomicBoleaan
         close = new AtomicBoolean();
-        close.set(false);
         sfidato = new AtomicBoolean();
+
+        // avvio modulo per ascoltare richieste
         listenCommand(port,registration,server,stub);
-
-        /*
-        SocketAddress address = new InetSocketAddress(host,port);
-        SocketChannel client = SocketChannel.open(address);
-        client.configureBlocking(true);
-
-        Operation op = new Operation(registration,server,client);
-        MainForm form = new MainForm(op);
-
-        JFrame window = new JFrame("GUI Test");
-        JPanel main = new JPanel();
-        //window.getContentPane().add(main);
-
-        JPanel username = new JPanel();
-        JPanel password = new JPanel();
-        xInput = new JTextField("",10);
-
-        yInput = new JTextField("",10);
-        xInput.setBackground(Color.WHITE);
-        yInput.setBackground(Color.WHITE);
-        username.add(new JLabel("username"));
-        username.add(xInput);
-
-        password.add(new JLabel("password"));
-        password.add(yInput);
-
-        JButton invio = new JButton("invio");
-        ActionListener ok = new RunList(xInput,yInput);
-        invio.addActionListener(ok);
-
-        password.add(invio);
-
-
-        window.getContentPane().add(main);
-        JButton button = new JButton("sign up");
-        main.add(button);
-        ActionListener listener = new ClickListener(main,username,password,window);
-        button.addActionListener(listener);
-        window.setSize(800,600);
-        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        window.setLocation(100,100);
-        window.setVisible(true);
-
-        */
-
-
-        // stabilisco connessione con server.
-        // configuro connessione bloccante lato server.
-
-
         System.exit(1);
 
     }
+
+    /**
+     * @param nport porta del server alla quale mandare richieste TCP.
+     * @param registration istanza di ImplRemoteRegistration per gestire operazione di registrazione.
+     * @param server istanza di ServerCallBImpl per registrare utente e gestire richieste di sfida.
+     * @param stub stub delle richieste di sfida gestite con RMI callback.
+     * @throws Exception varie eccezioni che possono essere lanciate in caso di vari errori.
+     */
     public static void listenCommand(int nport,RemoteRegistration registration,ServerInterface server,NotifyEventInterface stub)throws Exception{
+
+        /* ------- Inizializzo address e socketChannel per richieste TCP ------- */
         SocketAddress address = new InetSocketAddress(host, nport);
         SocketChannel client = SocketChannel.open(address);
         client.configureBlocking(true);
+        /* --------------------------------------------------------------------- */
 
         String username = null;
+        // loop per gestire le varie richieste
         while (!close.get()) {
 
             String in = null;
@@ -149,17 +132,19 @@ public class MainClassClient {
                     t.join();
                     sfidato.set(false);
                 }
-                //System.out.println("OOOOSSS");
                 System.out.printf(">");
-                lock.lock();
-                    in = input.readLine();
-                lock.unlock();
+                // prendo in input la richiesta
+                in = input.readLine();
             }
             if (in != null) {
                 String[] elenco = in.split(" ");
                 try {
+
+                    // switcho prima stringa della richiesta
                     switch (elenco[0]) {
                         case "registra_utente": {
+
+                            // gestisco operazione di registrazione dell'utente
                             String user = elenco[1];
                             String passw = elenco[2];
                             int res = registration.registra(user, passw);
@@ -181,7 +166,9 @@ public class MainClassClient {
                             }
                         }
                         break;
+
                         case "login": {
+                            // gestisco operazione di login
                             username = elenco[1];
                             String password = elenco[2];
 
@@ -215,6 +202,7 @@ public class MainClassClient {
                                     break;
                                 case "1":
                                     System.out.println("Login eseguito con successo");
+                                    // registro l'utente per ricevere notifiche in callback in caso di richiesta di sfida
                                     server.registerForCallback(username, stub);
                                     break;
                             }
@@ -222,6 +210,8 @@ public class MainClassClient {
                         }
                         break;
                         case "logout": {
+
+                            // gestisco operazione di logout
                             if(username== null){
                                 System.out.println("Need a login before");
                             } else {
@@ -248,7 +238,10 @@ public class MainClassClient {
 
                         }
                         break;
+
                         case "aggiungi_amico": {
+
+                            // gestisco operazione di aggiunta amico
                             if(username== null){
                                 System.out.println("Need a login before");
                             } else {
@@ -282,6 +275,8 @@ public class MainClassClient {
                         }
                         break;
                         case "lista_amici": {
+
+                            // gestisco operazione di richiesta lista amici
                             if(username== null){
                                 System.out.println("Need a login before");
                             } else {
@@ -322,6 +317,7 @@ public class MainClassClient {
                         break;
                         case "mostra_punteggio": {
 
+                            // gestisco operazione di richiesta mostra punteggio dell'utente appena loggato
                             if(username== null){
                                 System.out.println("Need a login before");
                             } else {
@@ -338,7 +334,10 @@ public class MainClassClient {
                             }
                         }
                         break;
+
                         case "mostra_classifica": {
+
+                            // gestisco operazione di mostra classifica dell'utente loggato e dei suoi amici.
                             if(username== null){
                                 System.out.println("Need a login before");
                             } else {
@@ -377,7 +376,10 @@ public class MainClassClient {
                             }
                         }
                         break;
+
                         case "sfida": {
+
+                            // gestisco operazione di invio richiesta di sfida
                             if (username == null) {
                                 System.out.println("Need a login before");
                             } else {
@@ -435,9 +437,10 @@ public class MainClassClient {
                                         time.start();
                                         int i = 1;
                                         System.out.println("Via alla sfida di traduzione!");
-                                        System.out.println("Avete " + timeout + " secondi per tradurre correttamente " + countWord + " parole.");
+                                        System.out.println("Avete 60 secondi per tradurre correttamente " + countWord + " parole.");
 
                                         boolean stayHere = false;
+
                                         while (time.isAlive() && !stayHere) {
                                             System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
                                             System.out.printf(">");
@@ -488,7 +491,10 @@ public class MainClassClient {
                             }
                         }
                         break;
+
                         case "exit": {
+
+                            // gestisco richiesta terminazione client
                             close.set(true);
                             client.close();
                             input.close();
@@ -497,132 +503,167 @@ public class MainClassClient {
                         break;
 
                         case "wq": {
+
+                            // gestisco richiesta di help inviata dall'utente
                             System.out.println("usage : COMMANDS [ ARGS ...]");
                             System.out.println("Commands:");
                             System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
                             System.out.println(" login <nickUtente> <password>");  //effettua il login
-                            System.out.println(" logout <nickUtente>");  // effettua il logout
+                            System.out.println(" logout");  // effettua il logout
                             System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                            System.out.println(" lista_amici <nickUtente>");  //mostra la lista dei propri amici
+                            System.out.println(" lista_amici");  //mostra la lista dei propri amici
                             System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                            System.out.println(" mostra_punteggio <nickUtente>");  //mostra il punteggio dell’utente
-                            System.out.println(" mostra_classifica <nickUtente>");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
+                            System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
+                            System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
                             System.out.println("exit"); // termina il client
                         }
                         break;
                         case "1": {
-                            DatagramPacket sendPacket;
 
-                            if (timeout.isAlive()) {
+                            // gestisco caso di sfida accettata dall'utente sfidato
+                            if(sfidato.get()) {
 
-                                sendPacket = new DatagramPacket("ok".getBytes(), "ok".length(), IPAddress, port);
-                                try {
-                                    clientSocket.send(sendPacket);
-                                    //input.close();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                ByteBuffer reader = ByteBuffer.allocate(1024);
-                                client.configureBlocking(true);
-                                client.read(reader);
-                                reader.flip();
-                                String fina = StandardCharsets.UTF_8.decode(reader).toString();
-                                //System.out.println(fina);
-                                if (fina.contains("parola") || fina.contains("60000")) {
-                                    String[] el = fina.split("/");
-                                    int timeoutt = Integer.parseInt(el[0]);
+                                DatagramPacket sendPacket;
 
-                                    int countWord = Integer.parseInt(el[1]);
+                                if (timeout.isAlive()) {
 
-                                    String nextWord = el[2];
-                                    Thread time = new Thread(new Timeout(timeoutt));
-                                    time.start();
-                                    int i = 1;
-                                    boolean stayHere = false;
+                                    sendPacket = new DatagramPacket("ok".getBytes(), "ok".length(), IPAddress, port);
                                     try {
-                                        while (time.isAlive() && !stayHere) {
-                                            System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
-                                            System.out.printf(">");
-                                            String word = input.readLine();
-                                            //System.out.println(word);
-
-                                            String risp = "parola/" + (i) + "/" + countWord + "/" + word;
-                                            i = i + 1;
-                                            reader = ByteBuffer.wrap(risp.getBytes());
-                                            if (!time.isAlive()) {
-                                                risp = "Tempo Scaduto";
-                                                reader = ByteBuffer.wrap(risp.getBytes());
-                                                client.write(reader);
-                                                reader = ByteBuffer.allocate(1024);
-                                                client.read(reader);
-                                                reader.flip();
-                                                risp = StandardCharsets.UTF_8.decode(reader).toString();
-                                                System.out.println("Tempo Scaduto!");
-                                                System.out.println(risp);
-                                            } else {
-
-
-                                                client.write(reader);
-
-                                                reader = ByteBuffer.allocate(1024);
-                                                client.read(reader);
-                                                reader.flip();
-                                                risp = StandardCharsets.UTF_8.decode(reader).toString();
-
-                                                if (risp.contains("parola")) {
-                                                    String[] sl = risp.split("/");
-
-                                                    //System.out.println(risp);
-                                                    nextWord = sl[3];
-                                                } else {
-                                                    stayHere = true;
-                                                    System.out.println(risp);
-
-                                                }
-                                                //System.out.println("QI");
-                                            }
-                                        }
+                                        clientSocket.send(sendPacket);
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
+                                    ByteBuffer reader = ByteBuffer.allocate(1024);
+                                    client.configureBlocking(true);
+                                    client.read(reader);
+                                    reader.flip();
+                                    String fina = StandardCharsets.UTF_8.decode(reader).toString();
+                                    //System.out.println(fina);
+                                    if (fina.contains("parola") || fina.contains("60000")) {
+                                        String[] el = fina.split("/");
+                                        int timeoutt = Integer.parseInt(el[0]);
+
+                                        int countWord = Integer.parseInt(el[1]);
+
+                                        String nextWord = el[2];
+                                        Thread time = new Thread(new Timeout(timeoutt));
+                                        time.start();
+                                        int i = 1;
+                                        boolean stayHere = false;
+                                        try {
+                                            System.out.println("Via alla sfida di traduzione!");
+                                            System.out.println("Avete 60 secondi per tradurre correttamente " + countWord + " parole.");
+
+                                            while (time.isAlive() && !stayHere) {
+                                                System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
+                                                System.out.printf(">");
+                                                String word = input.readLine();
+                                                //System.out.println(word);
+
+                                                String risp = "parola/" + (i) + "/" + countWord + "/" + word;
+                                                i = i + 1;
+                                                reader = ByteBuffer.wrap(risp.getBytes());
+                                                if (!time.isAlive()) {
+                                                    risp = "Tempo Scaduto";
+                                                    reader = ByteBuffer.wrap(risp.getBytes());
+                                                    client.write(reader);
+                                                    reader = ByteBuffer.allocate(1024);
+                                                    client.read(reader);
+                                                    reader.flip();
+                                                    risp = StandardCharsets.UTF_8.decode(reader).toString();
+                                                    System.out.println("Tempo Scaduto!");
+                                                    System.out.println(risp);
+                                                } else {
+
+
+                                                    client.write(reader);
+
+                                                    reader = ByteBuffer.allocate(1024);
+                                                    client.read(reader);
+                                                    reader.flip();
+                                                    risp = StandardCharsets.UTF_8.decode(reader).toString();
+
+                                                    if (risp.contains("parola")) {
+                                                        String[] sl = risp.split("/");
+
+                                                        //System.out.println(risp);
+                                                        nextWord = sl[3];
+                                                    } else {
+                                                        stayHere = true;
+                                                        System.out.println(risp);
+
+                                                    }
+                                                    //System.out.println("QI");
+                                                }
+                                            }
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                } else {
+                                    sendPacket = new DatagramPacket("tempo scaduto per accettare".getBytes(), "tempo scaduto per accettare".length(), IPAddress, port);
+                                    try {
+                                        clientSocket.send(sendPacket);
+
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    System.out.println("Tempo scaduto per accettare");
                                 }
+
                             } else {
-                                sendPacket = new DatagramPacket("tempo scaduto per accettare".getBytes(), "tempo scaduto per accettare".length(), IPAddress, port);
-                                try {
-                                    clientSocket.send(sendPacket);
-                                    //input.close();
-
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                                System.out.println("Tempo scaduto per accettare");
+                                System.out.println(elenco[0]);
+                                System.out.println("usage : COMMANDS [ ARGS ...]");
+                                System.out.println("Commands:");
+                                System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
+                                System.out.println(" login <nickUtente> <password>");  //effettua il login
+                                System.out.println(" logout");  // effettua il logout
+                                System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
+                                System.out.println(" lista_amici");  //mostra la lista dei propri amici
+                                System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
+                                System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
+                                System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
+                                System.out.println("exit"); // termina il client
                             }
-
-
                         }
                         break;
                         case "2":{
-                            DatagramPacket sendPacket;
-                            if(timeout.isAlive()){
-                            sendPacket = new DatagramPacket("not ok".getBytes(), "not ok".length(), IPAddress, port);
-                            try {
-                                clientSocket.send(sendPacket);
-                                //input.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+
+                            // gestisco caso di sfida rifiutata dall'utente sfidato
+                            if(sfidato.get()) {
+                                DatagramPacket sendPacket;
+                                if (timeout.isAlive()) {
+                                    sendPacket = new DatagramPacket("not ok".getBytes(), "not ok".length(), IPAddress, port);
+                                    try {
+                                        clientSocket.send(sendPacket);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
 
 
-                            } else {
-                                sendPacket = new DatagramPacket("tempo scaduto per accettare".getBytes(), "tempo scaduto per accettare".length(), IPAddress, port);
-                                try {
-                                    clientSocket.send(sendPacket);
-                                    //input.close();
+                                } else {
+                                    sendPacket = new DatagramPacket("tempo scaduto per accettare".getBytes(), "tempo scaduto per accettare".length(), IPAddress, port);
+                                    try {
+                                        clientSocket.send(sendPacket);
 
-                                } catch (IOException e) {
-                                    e.printStackTrace();
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                    System.out.println("Tempo scaduto per accettare");
                                 }
-                                System.out.println("Tempo scaduto per accettare");
+                            } else {
+                                System.out.println(elenco[0]);
+                                System.out.println("usage : COMMANDS [ ARGS ...]");
+                                System.out.println("Commands:");
+                                System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
+                                System.out.println(" login <nickUtente> <password>");  //effettua il login
+                                System.out.println(" logout");  // effettua il logout
+                                System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
+                                System.out.println(" lista_amici");  //mostra la lista dei propri amici
+                                System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
+                                System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
+                                System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
+                                System.out.println("exit"); // termina il client
                             }
                         }
                         break;
@@ -632,12 +673,12 @@ public class MainClassClient {
                             System.out.println("Commands:");
                             System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
                             System.out.println(" login <nickUtente> <password>");  //effettua il login
-                            System.out.println(" logout <nickUtente>");  // effettua il logout
+                            System.out.println(" logout");  // effettua il logout
                             System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                            System.out.println(" lista_amici <nickUtente>");  //mostra la lista dei propri amici
+                            System.out.println(" lista_amici");  //mostra la lista dei propri amici
                             System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                            System.out.println(" mostra_punteggio <nickUtente>");  //mostra il punteggio dell’utente
-                            System.out.println(" mostra_classifica <nickUtente>");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
+                            System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
+                            System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
                             System.out.println("exit"); // termina il client
                             break;
 
@@ -645,16 +686,18 @@ public class MainClassClient {
 
                     }
                 }catch (Exception e) {
+
+                    // in caso di eccezione stampo l'help
                     System.out.println("usage : COMMANDS [ ARGS ...]");
                     System.out.println("Commands:");
                     System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
                     System.out.println(" login <nickUtente> <password>");  //effettua il login
-                    System.out.println(" logout <nickUtente>");  // effettua il logout
+                    System.out.println(" logout");  // effettua il logout
                     System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                    System.out.println(" lista_amici <nickUtente>");  //mostra la lista dei propri amici
+                    System.out.println(" lista_amici");  //mostra la lista dei propri amici
                     System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                    System.out.println(" mostra_punteggio <nickUtente>");  //mostra il punteggio dell’utente
-                    System.out.println(" mostra_classifica <nickUtente>");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
+                    System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
+                    System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
                     System.out.println("exit"); // termina il client
 
                 }
@@ -663,8 +706,13 @@ public class MainClassClient {
         }
         input.close();
     }
+
+    /**
+     * Thread per gestire richiesta di sfida.
+     *
+     * @param nport porta per richieste UDP
+     */
     public static void runExec(int nport){
-        //System.out.println("OOOK");
         port = nport;
         sfidato.set(true);
         t = new Thread( new Exec(port));
@@ -672,58 +720,52 @@ public class MainClassClient {
         t.start();
     }
 
+    /**
+     * Metodo eseguito dal thread che gestisce richiesta di sfida.
+     *
+     * @param port porta per richieste UDP
+     *
+     */
     public static void listenUDPreq(int port){
 
-        //lock.lock();
+        try {
+            clientSocket = new DatagramSocket();
+            IPAddress = InetAddress.getByName(host);
+        } catch (IOException e) {
 
-            //System.out.println("OOOOO");
+        }
+        byte[] receiveData = new byte[1024];
+        DatagramPacket sendPacket;
 
+        String sfida = "sfidato";
+        sendPacket = new DatagramPacket(sfida.getBytes(), sfida.length(), IPAddress, port);
+        try {
+            clientSocket.send(sendPacket);
+        } catch (IOException e) {
 
+        }
 
-            try {
-                clientSocket = new DatagramSocket();
-                IPAddress = InetAddress.getByName(host);
-            } catch (IOException e) {
-
-            }
-            byte[] receiveData = new byte[1024];
-            DatagramPacket sendPacket;
-
-            String sfida = "sfidato";
-            sendPacket = new DatagramPacket(sfida.getBytes(), sfida.length(), IPAddress, port);
-            try {
-                clientSocket.send(sendPacket);
-            } catch (IOException e) {
-
-            }
-            //System.out.println(port);
-
-            //System.out.println(new String(sfida.getBytes()));
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, port);
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, port);
 
 
-            try {
-                clientSocket.receive(receivePacket);
-            } catch (IOException e) {
+        try {
+            clientSocket.receive(receivePacket);
+        } catch (IOException e) {
 
-            }
-            //System.out.println("PORCI");
+        }
 
-            String ricevuta = new String(receiveData);
+        String ricevuta = new String(receiveData);
 
-            //System.out.println(ricevuta);
-            String[] elenco = ricevuta.split("/");
-            int tempo = 10000;
+        String[] elenco = ricevuta.split("/");
+        int tempo = 30000;
 
-            timeout = new Thread(new Timeout(tempo));
-            timeout.start();
-            //System.out.println("QUI");
+        timeout = new Thread(new Timeout(tempo));
+        timeout.start();
 
-            System.out.println(elenco[0]);
+        System.out.println(elenco[0]);
 
-            System.out.println("1. accetta sfida");
-            System.out.println("2. rifiuta sfida");
-
+        System.out.println("1. accetta sfida");
+        System.out.println("2. rifiuta sfida");
 
     }
 }

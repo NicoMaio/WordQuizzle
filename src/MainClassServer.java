@@ -1,9 +1,15 @@
+/**
+ * @author Nicolò Maio
+ *
+ * MainClassServer: Classe principale del Server di WordQuizzle.
+ *
+ * */
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import java.io.IOException;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.file.Files;
@@ -16,16 +22,28 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
+/**
+ * MainClassServer Classe principale del server di WordQuizzle.
+ */
 public class MainClassServer {
 
     public static int DEFAULT_PORT = 13200;
+    // numero di default della porta su cui attenderà il server.
+
     public static String fileJsonName = "BackupServer.json";
-    public static int PORT_FOR_RSERVICE = 9999;
+    // nome del file json su cui verrà fatto il backup dell'intera struttura contenente i dati degli utenti.
+
+    public static int PORT_FOR_REGISTRATIONS = 9999;
+    // numero di porta per servizio RMI che gestisce l'operazione di registrazione.
+
+    public static int PORT_FOR_CALLBACK = 5000;
+    // numero di porta per servizio RMI callback per notificare utente sfidato..
 
     public static void main(String[] args){
-        // ServerClass [port]
-        // [port]: numero di porta su cui il server resta in attesa
+        // MainClassServer [port]
+        // [port]: numero di porta su cui il server resta in attesa, se non viene specificato si usa DEFAULT_PORT
 
+        // TreeMap registeredList usata per gestire gli utenti registrati.
         TreeMap<String, Utente> registeredList = new TreeMap<>(new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
@@ -33,6 +51,7 @@ public class MainClassServer {
             }
         });
 
+        // TreeMap userList usata per gestire gli utenti online.
         TreeMap<String, SelectionKey> usersList = new TreeMap<>(new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
@@ -40,11 +59,18 @@ public class MainClassServer {
             }
         });
 
+        // Classe Counters usata per gestire i conteggi delle sfide
         Counters counters = new Counters();
+
+        /*  -------- Recupero dati da file BackupServer.json -------- */
+
         Path path = Paths.get(".");
         Path JsonNioPath = path.resolve(fileJsonName);
+
         if(Files.exists(JsonNioPath)){
+
             String elements;
+
             try{
 
                 elements = readJson(fileJsonName);
@@ -56,32 +82,41 @@ public class MainClassServer {
             }
 
         }
+
+        /*  --------------------------------------------------------- */
+
+        /*  -------- Imposto servizio di registrazione con RMI -------- */
         try {
 
-
             ImplRemoteRegistration register = new ImplRemoteRegistration(registeredList,counters);
-            LocateRegistry.createRegistry(PORT_FOR_RSERVICE);
+            LocateRegistry.createRegistry(PORT_FOR_REGISTRATIONS);
 
-            Registry r = LocateRegistry.getRegistry(PORT_FOR_RSERVICE);
+            Registry r = LocateRegistry.getRegistry(PORT_FOR_REGISTRATIONS);
             r.rebind(ImplRemoteRegistration.SERVICE_NAME, register);
         } catch ( RemoteException r ){
             r.printStackTrace();
         }
+        /*  ----------------------------------------------------------- */
 
+        /*  -------- Imposto servizio di callback con RMI per notificare utenti sfidati -------- */
         ServerCallBImpl server = null;
         Registry registry=null;
+
         try {
+
             server = new ServerCallBImpl();
             ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(server,39000);
-            LocateRegistry.createRegistry(5000);
-            registry = LocateRegistry.getRegistry(5000);
+            LocateRegistry.createRegistry(PORT_FOR_CALLBACK);
+            registry = LocateRegistry.getRegistry(PORT_FOR_CALLBACK);
             registry.bind(ServerInterface.SERVICE_NAME,stub);
 
         } catch (RemoteException | AlreadyBoundException | java.rmi.AlreadyBoundException r) {
             r.printStackTrace();
         }
+        /*  ------------------------------------------------------------------------------------ */
 
 
+        /*  -------- Ricavo porta per le connessioni TCP -------- */
         int port;
 
         try {
@@ -92,17 +127,23 @@ public class MainClassServer {
 
             port = DEFAULT_PORT;
         }
+        /*  ----------------------------------------------------- */
 
 
+        // Lancio thread che eseguirà tack ServerService ovvero thread che ascolterà le varie richieste dai client.
         Thread thread = new Thread(new ServerService(port,registeredList,usersList,fileJsonName,server,counters));
 
         thread.start();
 
+
+        /*  -------- Protocollo di terminazione -------- */
         boolean term = false;
         Scanner sc = new Scanner(System.in);
+
         while(!term) {
 
             if (sc.nextLine().equals("termina")){
+                // Il server termina se inserisco stringa "termina"
                 term = true;
             }
 
@@ -118,16 +159,29 @@ public class MainClassServer {
         sc.close();
         System.out.println("Server terminato...");
         System.exit(1);
+        /*  -------------------------------------------- */
+
 
     }
 
+    /**
+     * Legge da file BackupServer.json e ottiene una stringa
+     *
+     * @param pat path di BackupServer.json
+     *
+     *
+     * @return result (String JSON)
+     * @throws IOException durante la lettura del file
+     * */
     public static String readJson(String pat) throws IOException{
+
         Path path = Paths.get(".");
         Path JsonNioPath = path.resolve(pat);
         String result="";
         FileChannel inChannel = FileChannel.open(JsonNioPath, StandardOpenOption.READ);
         ByteBuffer byteBufferReader = ByteBuffer.allocate(1024 * 1024);
         boolean stop = false;
+
         while (!stop)
         {
             int bytesRead = inChannel.read(byteBufferReader);
@@ -144,6 +198,13 @@ public class MainClassServer {
         return result;
     }
 
+
+    /**
+     * Aggiunge utenti a tabella hash di Counters
+     *
+     * @param counters classe Counters usata per gestire contatori delle sfide
+     * @param result string contenente il contenuto di BackupServer.json
+     */
     public static void buildCounters(Counters counters,String result){
         JSONArray jsonArray;
         JSONParser parser = new JSONParser();
@@ -164,6 +225,14 @@ public class MainClassServer {
             e.printStackTrace();
         }
     }
+
+
+    /**
+     * Costruisce registeredList con i dati che trova sul file di backup in json.
+     *
+     * @param registeredList TreeMap che conterrà tutti i dati degli utenti
+     * @param result stringa ottenuta dalla lettura di BackupServer.json
+     */
     public static void buildRegistered(TreeMap<String, Utente> registeredList, String result){
 
         JSONArray jsonArray;

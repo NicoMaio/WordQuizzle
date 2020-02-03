@@ -1,9 +1,14 @@
+/**
+ * @author Nicolò Maio
+ *
+ * Task eseguito dal thread lanciato dal server che gestisce le varie richieste dei client.
+ * */
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.file.Files;
@@ -18,15 +23,29 @@ import java.util.concurrent.TimeUnit;
 
 public class ServerService implements Runnable {
 
-    private static int BUF_SZ = 1024;
     private static String fileJsonName;
+    // String contente nome del file json su cui salvare update di registeredList.
+
     private int port;
+    // porta sulla quale si riceveranno le varie richieste dei client.
+
     public TreeMap<String, Utente> registeredList;
+    // TreeMap registerdList conterrà tutte le info degli utenti registrati.
+
     private TreeMap<String,SelectionKey> usersList;
+    // TreeMap conterrà elenco utenti online e rispettive SelectionKey.
+
     private Vector<String> gamers;
+    // Vector degli utenti che stanno svolgendo delle sfide.
+
     private ThreadPoolExecutor threadPoolExecutor;
+    // ThreadPoolExecutor usato per gestire le varie richieste dei client.
+
     private static ServerCallBImpl server;
+    // ServerCallBImpl usata per gestire le callback lato server in caso di notifiche di sfida.
+
     private static Selector selector;
+    //
     private Counters counters;
 
     public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online,
