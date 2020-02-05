@@ -37,7 +37,7 @@ public class MainClassServer {
     // numero di porta per servizio RMI che gestisce l'operazione di registrazione.
 
     public static int PORT_FOR_CALLBACK = 5000;
-    // numero di porta per servizio RMI callback per notificare utente sfidato..
+    // numero di porta per servizio RMI callback per notificare utente sfidato.
 
     public static void main(String[] args){
         // MainClassServer [port]
@@ -135,6 +135,20 @@ public class MainClassServer {
 
         thread.start();
 
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                try {
+                    thread.interrupt();
+
+                    thread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Server terminato...");
+                System.exit(1);
+            }
+        });
 
         /*  -------- Protocollo di terminazione -------- */
         boolean term = false;

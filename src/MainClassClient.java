@@ -57,6 +57,8 @@ public class MainClassClient {
     private static Thread timeout;
     // thread Timeout usato per gestire i timeout della sfida.
 
+    private static  String username;
+
     public static void main(String[] args) throws Exception {
         // MainClassClient host port
         // host: nome del host Server di WordQuizzle.
@@ -116,7 +118,9 @@ public class MainClassClient {
         client.configureBlocking(true);
         /* --------------------------------------------------------------------- */
 
-        String username = null;
+
+
+
         // loop per gestire le varie richieste
         while (!close.get()) {
 
@@ -171,6 +175,9 @@ public class MainClassClient {
                             // gestisco operazione di login
                             username = elenco[1];
                             String password = elenco[2];
+
+                            Runtime.getRuntime().addShutdownHook(new Thread(new ShutDownerThread(username,client)));
+
 
                             String toServer = "login/" + username + "/" + password;
 

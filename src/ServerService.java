@@ -309,7 +309,6 @@ public class ServerService implements Runnable {
 
     public static void callBack(String username,int value) throws RemoteException {
 
-        System.out.println("QUIDIOFA");
         server.update(value,username);
     }
 }

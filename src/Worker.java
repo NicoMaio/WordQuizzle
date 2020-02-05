@@ -170,6 +170,9 @@ public class Worker implements Runnable {
                     con9.resp = ByteBuffer.wrap(resp.getBytes());
 
                     System.out.println(new String(con9.resp.array()));
+                    synchronized (gamers) {
+                        gamers.remove(uname);
+                    }
                     //key.attach(con);
                     //key.interestOps(SelectionKey.OP_WRITE);
 
@@ -701,6 +704,7 @@ public class Worker implements Runnable {
 
         System.out.println("ecco stringa ricevuta: "+receive);
         String[] elenco = receive.split("/");
+        boolean otherPlayerOnline = true;
 
         if(receive.contains("parola")){
             // leggo parola tradotta aggiorno punteggio e mando parola successiva
@@ -708,7 +712,6 @@ public class Worker implements Runnable {
             // per mandare i risultati della sfida.
             // parola/1/K/parolaTradotta
 
-            //System.out.println("Letta");
             int actual = Integer.parseInt(elenco[1]);
             int total = Integer.parseInt(elenco[2]);
 
@@ -738,25 +741,43 @@ public class Worker implements Runnable {
                     break;
             }
 
-            //System.out.println("punteggio parole corrette: "+temp.getParoleOk());
             if(actual>=total){
                 key.attach(temp);
-                ///System.out.println("PRMA DI ENDONE "+id);
 
                 switch (id){
                     case 1:
                         counters.setEndChallenge(temp.getSfidante());
+                        synchronized (usersList){
+                            otherPlayerOnline = usersList.containsKey(temp.getSfidato());
+                        }
                         break;
                     case 2:
                         counters.setEndChallenge(temp.getSfidato());
+                        synchronized (usersList){
+                            otherPlayerOnline = usersList.containsKey(temp.getSfidante());
+                        }
                         break;
                 }
                 endOne(key, temp, id);
+                if(otherPlayerOnline) {
 
-                if(counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato())==1){
-                    startResponse(1,key);
+                    if (counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato()) == 1) {
+                        startResponse(1, key);
 
-                    ServerService.saveUsersStats(registeredList);
+                        ServerService.saveUsersStats(registeredList);
+                    }
+                } else {
+                    SocketChannel chan2 = (SocketChannel) key.channel();
+                    ByteBuffer wrr = ByteBuffer.wrap("L'avversario si è ritirato".getBytes());
+                    synchronized (gamers) {
+                        gamers.remove(temp.getSfidato());
+                        gamers.remove(temp.getSfidante());
+                    }
+                    try {
+                        chan2.write(wrr);
+                    } catch (IOException e){
+                        e.printStackTrace();
+                    }
                 }
 
             } else {
@@ -776,18 +797,41 @@ public class Worker implements Runnable {
             int id = temp.getId();
             key.attach(temp);
             endOne(key,temp,id);
+
             switch (id){
                 case 1:
                     counters.setEndChallenge(temp.getSfidante());
+                    synchronized (usersList){
+                        otherPlayerOnline = usersList.containsKey(temp.getSfidato());
+                    }
                     break;
                 case 2:
                     counters.setEndChallenge(temp.getSfidato());
+                    synchronized (usersList){
+                        otherPlayerOnline = usersList.containsKey(temp.getSfidante());
+                    }
                     break;
             }
-            if(counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato())==1){
-                startResponse(1,key);
 
-                ServerService.saveUsersStats(registeredList);
+            if(otherPlayerOnline) {
+                if (counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato()) == 1) {
+                    startResponse(1, key);
+
+                    ServerService.saveUsersStats(registeredList);
+                }
+            } else {
+
+                SocketChannel chan2 = (SocketChannel) key.channel();
+                ByteBuffer wrr = ByteBuffer.wrap("L'avversario si è ritirato".getBytes());
+                synchronized (gamers) {
+                    gamers.remove(temp.getSfidato());
+                    gamers.remove(temp.getSfidante());
+                }
+                try {
+                    chan2.write(wrr);
+                } catch (IOException e){
+                    e.printStackTrace();
+                }
             }
         }
 
