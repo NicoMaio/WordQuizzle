@@ -61,6 +61,58 @@ public class ServerService implements Runnable {
         ServerService.server = server;
     }
 
+    public static void saveUsersStats(TreeMap<String,Utente> registeredList) {
+        Set<Map.Entry<String, Utente>> set;
+        synchronized (registeredList) {
+            set = registeredList.entrySet();
+        }
+        Iterator<Map.Entry<String, Utente>> iterator= set.iterator();
+
+        JSONArray array= new JSONArray();
+
+        while(iterator.hasNext()){
+            JSONObject obj = new JSONObject();
+            Utente temp = iterator.next().getValue();
+            obj.put("username",temp.getUsername());
+            obj.put("password",temp.getPassword());
+            obj.put("points",temp.getPoint());
+
+            Vector<String> friends =  temp.getFriends();
+            Iterator<String> iterFriends = friends.iterator();
+            JSONArray arrayfriends = new JSONArray();
+            while(iterFriends.hasNext()){
+                String temp2 = iterFriends.next();
+                JSONObject obj2 = new JSONObject();
+                obj2.put("username",temp2);
+                arrayfriends.add(obj2);
+            }
+            obj.put("friends",arrayfriends);
+            array.add(obj);
+
+        }
+
+        Path path = Paths.get(".");
+        Path JsonNioPath = path.resolve(fileJsonName);
+
+        try {
+
+            // creo file nio
+            Files.deleteIfExists(JsonNioPath);
+            Files.createFile(JsonNioPath);
+
+            // scrivo il file nuo Worker.Auxiliar json object
+            FileChannel outChannel = FileChannel.open(JsonNioPath, StandardOpenOption.WRITE);
+            String body = array.toJSONString();
+            byte[] bytes = body.getBytes();
+            ByteBuffer buf = ByteBuffer.wrap(bytes);
+            outChannel.write(buf);
+            outChannel.close();
+        } catch (IOException e){
+            e.printStackTrace();
+
+        }
+    }
+
 
     public void run() {
 
@@ -235,7 +287,7 @@ public class ServerService implements Runnable {
 
     }
 
-    public static void saveUsersStats(){
+    public  void saveUsersStats(){
 
         Set<Map.Entry<String, Utente>> set;
         synchronized (registeredList) {
@@ -252,7 +304,6 @@ public class ServerService implements Runnable {
             obj.put("password",temp.getPassword());
             obj.put("points",temp.getPoint());
 
-            System.out.println("Punteggio: "+temp.getPoint());
             Vector<String> friends =  temp.getFriends();
             Iterator<String> iterFriends = friends.iterator();
             JSONArray arrayfriends = new JSONArray();

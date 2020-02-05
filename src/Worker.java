@@ -255,7 +255,7 @@ public class Worker implements Runnable {
                     } catch (IOException e){
                         e.printStackTrace();
                     }
-                    ServerService.saveUsersStats();
+                    ServerService.saveUsersStats(registeredList);
                 break;
                 case "mostra_punteggio":
                     String ute = elenco[1];
@@ -744,7 +744,7 @@ public class Worker implements Runnable {
                     if (counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato()) == 1) {
                         startResponse(1, key);
 
-                        ServerService.saveUsersStats();
+                        ServerService.saveUsersStats(registeredList);
                     }
                 } else {
                     SocketChannel chan2 = (SocketChannel) key.channel();
@@ -797,7 +797,7 @@ public class Worker implements Runnable {
                 if (counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato()) == 1) {
                     startResponse(1, key);
 
-                    ServerService.saveUsersStats();
+                    ServerService.saveUsersStats(registeredList);
                 }
             } else {
 
