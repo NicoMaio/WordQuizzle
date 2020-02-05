@@ -2,8 +2,6 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
-import javax.swing.text.Style;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -15,21 +13,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.IntStream;
 
 public class Worker implements Runnable {
 
-    static TreeMap<String, Utente> registeredList;
+    private final  TreeMap<String, Utente> registeredList;
     public static String dizionario = "Dizionario.json";
-    private static int K_BOUND = 5;
-    private TreeMap<String, SelectionKey> usersList;
-    private static Vector<String> gamers;
+    private final TreeMap<String, SelectionKey> usersList;
+    private final Vector<String> gamers;
     private SelectionKey key;
     private Selector selector;
     private static SelectionKey sfidante;
-    private static SelectionKey sfidato;
     private static SelectionKey sfidante1;
     private static SelectionKey sfidato1;
     private static int sfidat;
@@ -39,7 +33,6 @@ public class Worker implements Runnable {
     private Counters counters;
 
 
-    private static int BUF_DIM = 1024;
     public Worker(TreeMap<String, Utente> registeredList,
                   TreeMap<String, SelectionKey> usersList,SelectionKey key,
                   Vector<String> gamers,Counters counters) {
@@ -47,7 +40,7 @@ public class Worker implements Runnable {
         this.key = key;
         this.gamers = gamers;
         this.counters = counters;
-        Worker.registeredList = registeredList;
+        this.registeredList = registeredList;
         sfidat = 5;
         sfidant = 5;
         endingSfida= false;
@@ -187,7 +180,7 @@ public class Worker implements Runnable {
                 case "lista_amici":
                     String user = elenco[1];
 
-                    Utente u = null;
+                    Utente u;
                     synchronized (registeredList){
                         u=registeredList.get(user);
                     }
@@ -197,10 +190,9 @@ public class Worker implements Runnable {
 
                         JSONArray array = new JSONArray();
 
-                        Iterator<String> iterator = friends.iterator();
-                        while(iterator.hasNext()){
+                        for (String friend : friends) {
                             JSONObject obj = new JSONObject();
-                            obj.put("username",iterator.next());
+                            obj.put("username", friend);
                             array.add(obj);
                         }
 
@@ -224,7 +216,7 @@ public class Worker implements Runnable {
                     String us = elenco[1];
                     String nfriend = elenco[2];
 
-                    int isok = 0;
+                    int isok;
 
                     synchronized (registeredList){
 
@@ -263,12 +255,12 @@ public class Worker implements Runnable {
                     } catch (IOException e){
                         e.printStackTrace();
                     }
-                    ServerService.saveUsersStats(registeredList);
+                    ServerService.saveUsersStats();
                 break;
                 case "mostra_punteggio":
                     String ute = elenco[1];
 
-                    long punteggio = 0;
+                    long punteggio;
 
                     synchronized (registeredList){
                         punteggio= registeredList.get(ute).getPoint();
@@ -287,18 +279,15 @@ public class Worker implements Runnable {
                 break;
                 case "mostra_classifica":
                     String ut = elenco[1];
-                    Map<String,Long> classifica = new TreeMap<String,Long>();
+                    Map<String,Long> classifica = new TreeMap<>();
 
                     synchronized (registeredList){
                         classifica.put(ut,registeredList.get(ut).getPoint());
 
                         Vector<String> friends = registeredList.get(ut).getFriends();
 
-                        Iterator<String> iterator = friends.iterator();
-
-                        while(iterator.hasNext()){
-                            String friend = iterator.next();
-                            classifica.put(friend,registeredList.get(friend).getPoint());
+                        for (String friend : friends) {
+                            classifica.put(friend, registeredList.get(friend).getPoint());
                         }
                     }
 
@@ -378,7 +367,7 @@ public class Worker implements Runnable {
                             }
                         } else {
 
-                            boolean contains = false;
+                            boolean contains;
                             synchronized (gamers){
                                 contains = gamers.contains(friend);
                             }
@@ -454,25 +443,19 @@ public class Worker implements Runnable {
                                     sfidant = 5;
                                     sfidat = 5;
                                     while (!endingSfida && (sfidant == 5 && sfidat == 5)) {
-                                        System.out.println("Ending = " + endingSfida + " Sfidant,Sfidat = " + sfidant + " , " + sfidat);
                                         if (selector.isOpen()) {
                                             selector.select();
                                             Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
 
                                             while (selectedKeys.hasNext()) {
-                                                SelectionKey key = (SelectionKey) selectedKeys.next();
+                                                SelectionKey key = selectedKeys.next();
                                                 selectedKeys.remove();
 
-                                                if (!key.isValid()) continue;
-                                                else if (key.isConnectable()) {
-                                                    //key.attach(new Auxiliar(uo,friend,port));
-                                                    //key.interestOps(SelectionKey.OP_READ);
-                                                    continue;
-                                                } else if (key.isReadable()) {
-                                                    readUDPreq(key);
-                                                } else if (key.isWritable()) {
+                                               if (key.isReadable()) {
+                                                   readUDPreq(key);
+                                               } else if (key.isWritable()) {
                                                     sendUDPreq(key);
-                                                }
+                                               }
 
                                             }
                                         }
@@ -480,7 +463,7 @@ public class Worker implements Runnable {
                                     }
                                     if (endingSfida) {
                                         System.out.println("entro qui");
-                                        ServerSocketChannel serverChannel = null;
+                                        ServerSocketChannel serverChannel;
 
                                         try {
 
@@ -511,7 +494,8 @@ public class Worker implements Runnable {
                                         // seleziono tempo per sfida e lo invio insieme con la prima parola,
                                         // lato client settaranno il loro thread Timeout.
 
-                                        int K = Math.abs(rand.nextInt(K_BOUND)) + 1;
+                                        int k_BOUND = 5;
+                                        int K = Math.abs(rand.nextInt(k_BOUND)) + 1;
                                         System.out.println("K è " + K);
                                         Path path = Paths.get(".");
                                         Path JsonNioPath = path.resolve(dizionario);
@@ -574,7 +558,7 @@ public class Worker implements Runnable {
                                         sfidato1.interestOps(SelectionKey.OP_READ);
                                     }
                                 } catch (IOException e) {
-
+                                    e.printStackTrace();
                                 }
 
                                 // invio richiesta ad amico
@@ -608,16 +592,14 @@ public class Worker implements Runnable {
                 default:
                 case "parola":{
                     try {
-                        //System.out.println("QUI");
                         tryReadTCP(key,receive);
                     }catch (IOException e){
-
+                        e.printStackTrace();
                     }
                 }
                 break;
             }
         }
-        return;
     }
 
     public void startResponse(int ok,SelectionKey key){
@@ -639,10 +621,8 @@ public class Worker implements Runnable {
             int paroleOkSfidat = punteggioSfidato[0];
             int paroleNotOkSfidat = punteggioSfidato[1];
             int paroleNotTraSfidat = punteggioSfidato[2];
-            String risp1,risp2;
             if(puntsfidat < puntsfidant){
                 int finalpunt = puntsfidant+3;
-                //System.out.println("here");
                 sendToWinner(sfidante1,temp, puntsfidant, paroleOkSfidant, paroleNotOkSfidant, paroleNotTraSfidant, puntsfidat, finalpunt);
 
                 synchronized (registeredList){
@@ -695,7 +675,7 @@ public class Worker implements Runnable {
             try {
                 client.write(writer);
             }catch (IOException e){
-
+                e.printStackTrace();
             }
 
         }
@@ -764,7 +744,7 @@ public class Worker implements Runnable {
                     if (counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato()) == 1) {
                         startResponse(1, key);
 
-                        ServerService.saveUsersStats(registeredList);
+                        ServerService.saveUsersStats();
                     }
                 } else {
                     SocketChannel chan2 = (SocketChannel) key.channel();
@@ -817,7 +797,7 @@ public class Worker implements Runnable {
                 if (counters.getEndChallenge(temp.getSfidante()) == 1 && counters.getEndChallenge(temp.getSfidato()) == 1) {
                     startResponse(1, key);
 
-                    ServerService.saveUsersStats(registeredList);
+                    ServerService.saveUsersStats();
                 }
             } else {
 
@@ -886,12 +866,10 @@ public class Worker implements Runnable {
 
     static <K,V extends Comparable<? super V>>
     SortedSet<Map.Entry<K,V>> entriesSortedByValues(Map<K,V> map) {
-        SortedSet<Map.Entry<K,V>> sortedEntries = new TreeSet<Map.Entry<K,V>>(
-                new Comparator<Map.Entry<K,V>>() {
-                    @Override public int compare(Map.Entry<K,V> e1, Map.Entry<K,V> e2) {
-                        int res = e2.getValue().compareTo(e1.getValue());
-                        return res != 0 ? res : 1;
-                    }
+        SortedSet<Map.Entry<K,V>> sortedEntries = new TreeSet<>(
+                (e1, e2) -> {
+                    int res = e2.getValue().compareTo(e1.getValue());
+                    return res != 0 ? res : 1;
                 }
         );
         sortedEntries.addAll(map.entrySet());
@@ -908,16 +886,11 @@ public class Worker implements Runnable {
         String sfidante;
         String sfidato;
         int porta;
-        private int paroleOk;
-        private int paroleNotOk;
-        private int paroleNotTra;
         int typeOp;
         int fine;
         SelectionKey altro;
 
         private int id;
-
-        private int punteggio;
         /*
          *   id= 1 : sfidante;
          *   id= 2 : sfidato;
@@ -925,13 +898,10 @@ public class Worker implements Runnable {
          * */
 
         public Auxiliar(String sfidante,String sfidato,int porta,SelectionKey altro) {
+            int BUF_DIM = 1024;
             req = ByteBuffer.allocate(BUF_DIM);
             this.sfidante = sfidante;
             this.sfidato = sfidato;
-            punteggio = 0;
-            paroleNotOk =0;
-            paroleNotTra =0;
-            paroleOk =0;
             this.porta = porta;
             id = 0;
             fine = 0;
@@ -974,37 +944,6 @@ public class Worker implements Runnable {
             return id;
         }
 
-        public void setPunteggio(int value){
-            punteggio+=value;
-        }
-
-        public int getPunteggio(){
-            return punteggio;
-        }
-
-        public void setParoleOk(int value){
-            paroleOk+=value;
-        }
-
-        public void setParoleNotOk(int value){
-            paroleNotOk+=value;
-        }
-
-        public void setParoleNOtTra(int value){
-            paroleNotTra+=value;
-        }
-
-        public int getParoleOk(){
-            return paroleOk;
-        }
-
-        public int getParoleNotOk(){
-            return paroleNotOk;
-        }
-
-        public int getParoleNotTra(){
-            return paroleNotTra;
-        }
     }
 
     private void readUDPreq(SelectionKey key) throws IOException {
@@ -1027,13 +966,12 @@ public class Worker implements Runnable {
                 send = "Sei stato sfidato da "+aux.sfidante+" vuoi accettare?/10";
                 aux.resp = ByteBuffer.wrap(send.getBytes());
                 key.attach(aux);
-                sfidato = key;
                 aux.setId(2);
-                sfidato.attach(aux);
+                key.attach(aux);
 
                 //aux.resp.flip();
                 //chan.send(aux.resp, aux.sa);
-                sfidato.interestOps(SelectionKey.OP_WRITE);
+                key.interestOps(SelectionKey.OP_WRITE);
                 break;
             case "sfidante":
                 send = "In attesa dello sfidato: "+aux.sfidato;
@@ -1160,14 +1098,13 @@ public class Worker implements Runnable {
     private Vector<String> translateWords(Vector<String> words){
         Vector<String> tradotte = new Vector<>();
 
-        Iterator<String> iterator = words.iterator();
-        while(iterator.hasNext()) {
+        for (String word : words) {
             try {
-                URL url1 = new URL("https://api.mymemory.translated.net/get?q=" + iterator.next() + "&langpair=it|en");
+                URL url1 = new URL("https://api.mymemory.translated.net/get?q=" + word + "&langpair=it|en");
 
 
                 try (BufferedReader in = new BufferedReader(new InputStreamReader(url1.openStream()))) {
-                    StringBuilder inputLine= new StringBuilder();
+                    StringBuilder inputLine = new StringBuilder();
                     String reader;
                     // Read the "gpl.txt" text file from its URL representation
                     while ((reader = in.readLine()) != null) {
@@ -1179,19 +1116,18 @@ public class Worker implements Runnable {
 
                     try {
                         jsonObject = (JSONObject) parser.parse(inputLine.toString());
-                        JSONObject result = (JSONObject) jsonObject.get("responseData");
 
                         //String stampa = (String) result.get("translatedText");
                         //System.out.println(stampa);
 
                         JSONArray array = (JSONArray) jsonObject.get("matches");
 
-                        Iterator<JSONObject> iterator2 = array.iterator();
-                        while (iterator2.hasNext()){
-                            String stampa1 = (String)iterator2.next().get("translation");
+                        for (Object o : array) {
+                            JSONObject obj = (JSONObject) o;
+                            String stampa1 = (String) obj.get("translation");
                             tradotte.add(stampa1);
                         }
-                    } catch (ParseException e){
+                    } catch (ParseException e) {
                         e.printStackTrace();
                     }
 
@@ -1239,7 +1175,7 @@ public class Worker implements Runnable {
                 try {
                     selector.close();
                 }catch (IOException e){
-
+                    e.printStackTrace();
                 }
             } else {
 
@@ -1283,7 +1219,9 @@ public class Worker implements Runnable {
                 channel.socket().bind(isa);
 
                 findIt = true;
-            } catch (Exception a){ }
+            } catch (Exception a){
+                a.printStackTrace();
+            }
         }
         return nextPort;
     }
@@ -1294,17 +1232,13 @@ public class Worker implements Runnable {
         JSONArray jsonArray;
         JSONParser parser = new JSONParser();
 
-        // server per eliminare duplicati
-        List<String> listaInput = new ArrayList<>();
-
         try{
             jsonArray = (JSONArray) parser.parse(json);
             // ottengo array con tutti gli utenti
 
-            Iterator<JSONObject> iterator = jsonArray.iterator();
-            while(iterator.hasNext()){
-                JSONObject obj = iterator.next();
-                String word =(String)obj.get("word");
+            for (Object obj : jsonArray) {
+                JSONObject obj2 = (JSONObject) obj;
+                String word = (String) obj2.get("word");
                 dictionary.add(word);
                 System.out.println(word);
 
@@ -1314,12 +1248,11 @@ public class Worker implements Runnable {
                 Random rand = new Random();
                 int index = rand.nextInt(dictionary.size());
 
-                if(result.contains(dictionary.get(index))){
-
-                } else {
+                if(!result.contains(dictionary.get(index))){
                     result.add(dictionary.get(index));
                     System.out.println("index = " + index);
                     System.out.println("word = " + dictionary.get(index));
+
                 }
             }
 

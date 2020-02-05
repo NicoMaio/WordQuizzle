@@ -8,7 +8,7 @@ import java.util.HashMap;
 
 public class Counters {
 
-    private HashMap<String,int[]> table;
+    private final HashMap<String,int[]> table;
     // HashMap table usata per gestire i conteggi delle sfide.
 
     /*

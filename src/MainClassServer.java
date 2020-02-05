@@ -44,20 +44,10 @@ public class MainClassServer {
         // [port]: numero di porta su cui il server resta in attesa, se non viene specificato si usa DEFAULT_PORT
 
         // TreeMap registeredList usata per gestire gli utenti registrati.
-        TreeMap<String, Utente> registeredList = new TreeMap<>(new Comparator<String>() {
-            @Override
-            public int compare(String s1, String s2) {
-                return s1.compareTo(s2);
-            }
-        });
+        TreeMap<String, Utente> registeredList = new TreeMap<>(String::compareTo);
 
         // TreeMap userList usata per gestire gli utenti online.
-        TreeMap<String, SelectionKey> usersList = new TreeMap<>(new Comparator<String>() {
-            @Override
-            public int compare(String s1, String s2) {
-                return s1.compareTo(s2);
-            }
-        });
+        TreeMap<String, SelectionKey> usersList = new TreeMap<>(String::compareTo);
 
         // Classe Counters usata per gestire i conteggi delle sfide
         Counters counters = new Counters();
@@ -100,7 +90,7 @@ public class MainClassServer {
 
         /*  -------- Imposto servizio di callback con RMI per notificare utenti sfidati -------- */
         ServerCallBImpl server = null;
-        Registry registry=null;
+        Registry registry;
 
         try {
 
@@ -135,20 +125,17 @@ public class MainClassServer {
 
         thread.start();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(){
-            @Override
-            public void run() {
-                try {
-                    thread.interrupt();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                thread.interrupt();
 
-                    thread.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                System.out.println("Server terminato...");
-                System.exit(1);
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        });
+            System.out.println("Server terminato...");
+            System.exit(1);
+        }));
 
         /*  -------- Protocollo di terminazione -------- */
         boolean term = false;
@@ -191,7 +178,7 @@ public class MainClassServer {
 
         Path path = Paths.get(".");
         Path JsonNioPath = path.resolve(pat);
-        String result="";
+        StringBuilder result= new StringBuilder();
         FileChannel inChannel = FileChannel.open(JsonNioPath, StandardOpenOption.READ);
         ByteBuffer byteBufferReader = ByteBuffer.allocate(1024 * 1024);
         boolean stop = false;
@@ -203,13 +190,13 @@ public class MainClassServer {
             else
             {
                 String tmp = new String(byteBufferReader.array(), 0, byteBufferReader.position());
-                result += tmp;
+                result.append(tmp);
             }
             byteBufferReader.clear();
         }
         inChannel.close();
 
-        return result;
+        return result.toString();
     }
 
 
@@ -227,10 +214,9 @@ public class MainClassServer {
             jsonArray = (JSONArray) parser.parse(result);
             // ottengo array con tutti gli utenti
 
-            Iterator<JSONObject> iterator = jsonArray.iterator();
-            while(iterator.hasNext()){
-                JSONObject obj = iterator.next();
-                String username =(String)obj.get("username");
+            for (Object obj : jsonArray) {
+                JSONObject value = (JSONObject) obj;
+                String username = (String) value.get("username");
 
                 counters.addUser(username);
 
@@ -256,18 +242,17 @@ public class MainClassServer {
             jsonArray = (JSONArray) parser.parse(result);
             // ottengo array con tutti gli utenti
 
-            Iterator<JSONObject> iterator = jsonArray.iterator();
-            while(iterator.hasNext()){
-                JSONObject obj = iterator.next();
-                String username =(String)obj.get("username");
-                String password =(String)obj.get("password");
-                Long point = (Long)obj.get("points");
+            for (Object o : jsonArray) {
+                JSONObject obj = (JSONObject) o;
+                String username = (String) obj.get("username");
+                String password = (String) obj.get("password");
+                Long point = (Long) obj.get("points");
 
-                Utente utente = new Utente(username,password,point);
-                JSONArray listaF = (JSONArray)obj.get("friends");
-                Iterator<JSONObject> iterator1 = listaF.iterator();
-                while(iterator1.hasNext()){
-                    utente.setFriend(iterator1.next().get("username").toString());
+                Utente utente = new Utente(username, password, point);
+                JSONArray listaF = (JSONArray) obj.get("friends");
+                for (Object value : listaF) {
+                    JSONObject object = (JSONObject) value;
+                    utente.setFriend(object.get("username").toString());
                 }
                 registeredList.put(utente.getUsername(), utente);
 

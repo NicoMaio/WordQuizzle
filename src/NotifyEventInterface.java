@@ -14,5 +14,5 @@ public interface NotifyEventInterface extends Remote {
      * @param port porta alla quale dovrà essere indirizzata la risposta del client.
      * @throws RemoteException eccezione che potrebbere essere sollevata.
      */
-    public void notifyChallenge(int port) throws RemoteException;
+    void notifyChallenge(int port) throws RemoteException;
 }

@@ -27,9 +27,8 @@ public class ImplRemoteRegistration extends UnicastRemoteObject implements Remot
      * @param username username dell'utente che si sta registrando.
      * @param password password dell'utente che si sta registrando.
      * @return resituisce 1 se operazione andata a buon fine altrimenti 0.
-     * @throws RemoteException eccezione che potrebbe essere lanciata.
      */
-    public int registra(String username, String password) throws RemoteException {
+    public int registra(String username, String password){
         if(password == null) return 0;
 
         synchronized (registeredList) {

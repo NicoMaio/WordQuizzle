@@ -15,7 +15,7 @@ public class Exec implements Runnable {
         try {
             MainClassClient.listenUDPreq(port);
         } catch (Exception r){
-
+            r.printStackTrace();
         }
     }
 }

@@ -24,12 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainClassClient {
 
-    private static int DEFAULT_PORT = 13200;
-    // numero di default della porta su cui attende il server.
-
-    private static int PORT_FOR_RSERVICE = 9999;
-    // numero di porta per servizio RMI che gestisce l'operazione di registrazione.
-
     private static String host;
     // stringa contenente nome dell'host del server.
 
@@ -75,11 +69,12 @@ public class MainClassClient {
         try {
             port = Integer.parseInt(args[1]);
         } catch (RuntimeException e) {
-            port = DEFAULT_PORT;
+            port = 13200;
         }
         /* ---------------------------------------------------------- */
 
         /* ---------------- Imposto servizio RMI per operazione di registrazione ---------------- */
+        int PORT_FOR_RSERVICE = 9999;
         Registry reg = LocateRegistry.getRegistry(host, PORT_FOR_RSERVICE);
 
         RemoteRegistration registration = (RemoteRegistration) reg.lookup(RemoteRegistration.SERVICE_NAME);
@@ -130,13 +125,13 @@ public class MainClassClient {
                 t.join();
                 sfidato.set(false);
             }
-            if (!close.get() && input != null) {
+            if (!close.get()) {
                 if (sfidato.get()) {
 
                     t.join();
                     sfidato.set(false);
                 }
-                System.out.printf(">");
+                System.out.print(">");
                 // prendo in input la richiesta
                 in = input.readLine();
             }
@@ -304,20 +299,21 @@ public class MainClassClient {
                                 try {
                                     jsonArray = (JSONArray) parser.parse(risposta);
 
-                                    Iterator iterator = jsonArray.iterator();
-                                    String result = "";
+                                    Iterator<JSONObject> iterator = jsonArray.iterator();
+                                    StringBuilder result = new StringBuilder();
                                     while (iterator.hasNext()) {
-                                        JSONObject obj = (JSONObject) iterator.next();
+                                        JSONObject obj = iterator.next();
                                         String utente = (String) obj.get("username");
-                                        result += utente;
+                                        result.append(utente);
                                         if (iterator.hasNext()) {
-                                            result += ", ";
+                                            result.append(", ");
                                         }
                                     }
 
                                     System.out.println(result);
 
                                 } catch (ParseException e) {
+                                    e.printStackTrace();
                                 }
                             }
                         }
@@ -365,20 +361,21 @@ public class MainClassClient {
                                     jsonArray = (JSONArray) parser.parse(risposta);
 
                                     Iterator iterator = jsonArray.iterator();
-                                    String result = "Classifica: ";
+                                    StringBuilder result = new StringBuilder("Classifica: ");
                                     while (iterator.hasNext()) {
                                         JSONObject obj = (JSONObject) iterator.next();
                                         String utente = (String) obj.get("username");
                                         Long punteggio = (Long) obj.get("points");
-                                        result += utente + " " + punteggio;
+                                        result.append(utente).append(" ").append(punteggio);
                                         if (iterator.hasNext()) {
-                                            result += ", ";
+                                            result.append(", ");
                                         }
                                     }
 
                                     System.out.println(result);
 
                                 } catch (ParseException e) {
+                                    e.printStackTrace();
                                 }
                             }
                         }
@@ -450,11 +447,10 @@ public class MainClassClient {
 
                                         while (time.isAlive() && !stayHere) {
                                             System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
-                                            System.out.printf(">");
+                                            System.out.print(">");
                                             String word = input.readLine();
                                             String risp = "parola/" + (i) + "/" + countWord + "/" + word;
                                             i = i + 1;
-
                                             reader = ByteBuffer.wrap(risp.getBytes());
                                             if (!time.isAlive()) {
                                                 risp = "Tempo Scaduto";
@@ -512,17 +508,7 @@ public class MainClassClient {
                         case "wq": {
 
                             // gestisco richiesta di help inviata dall'utente
-                            System.out.println("usage : COMMANDS [ ARGS ...]");
-                            System.out.println("Commands:");
-                            System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
-                            System.out.println(" login <nickUtente> <password>");  //effettua il login
-                            System.out.println(" logout");  // effettua il logout
-                            System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                            System.out.println(" lista_amici");  //mostra la lista dei propri amici
-                            System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                            System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
-                            System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
-                            System.out.println("exit"); // termina il client
+                            helper2();
                         }
                         break;
                         case "1": {
@@ -563,10 +549,8 @@ public class MainClassClient {
 
                                             while (time.isAlive() && !stayHere) {
                                                 System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
-                                                System.out.printf(">");
+                                                System.out.print(">");
                                                 String word = input.readLine();
-                                                //System.out.println(word);
-
                                                 String risp = "parola/" + (i) + "/" + countWord + "/" + word;
                                                 i = i + 1;
                                                 reader = ByteBuffer.wrap(risp.getBytes());
@@ -593,14 +577,12 @@ public class MainClassClient {
                                                     if (risp.contains("parola")) {
                                                         String[] sl = risp.split("/");
 
-                                                        //System.out.println(risp);
                                                         nextWord = sl[3];
                                                     } else {
                                                         stayHere = true;
                                                         System.out.println(risp);
 
                                                     }
-                                                    //System.out.println("QI");
                                                 }
                                             }
                                         } catch (IOException e) {
@@ -619,18 +601,7 @@ public class MainClassClient {
                                 }
 
                             } else {
-                                System.out.println(elenco[0]);
-                                System.out.println("usage : COMMANDS [ ARGS ...]");
-                                System.out.println("Commands:");
-                                System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
-                                System.out.println(" login <nickUtente> <password>");  //effettua il login
-                                System.out.println(" logout");  // effettua il logout
-                                System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                                System.out.println(" lista_amici");  //mostra la lista dei propri amici
-                                System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                                System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
-                                System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
-                                System.out.println("exit"); // termina il client
+                                helper(elenco);
                             }
                         }
                         break;
@@ -659,34 +630,12 @@ public class MainClassClient {
                                     System.out.println("Tempo scaduto per accettare");
                                 }
                             } else {
-                                System.out.println(elenco[0]);
-                                System.out.println("usage : COMMANDS [ ARGS ...]");
-                                System.out.println("Commands:");
-                                System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
-                                System.out.println(" login <nickUtente> <password>");  //effettua il login
-                                System.out.println(" logout");  // effettua il logout
-                                System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                                System.out.println(" lista_amici");  //mostra la lista dei propri amici
-                                System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                                System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
-                                System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
-                                System.out.println("exit"); // termina il client
+                                helper(elenco);
                             }
                         }
                         break;
                         default: {
-                            System.out.println(elenco[0]);
-                            System.out.println("usage : COMMANDS [ ARGS ...]");
-                            System.out.println("Commands:");
-                            System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
-                            System.out.println(" login <nickUtente> <password>");  //effettua il login
-                            System.out.println(" logout");  // effettua il logout
-                            System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                            System.out.println(" lista_amici");  //mostra la lista dei propri amici
-                            System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                            System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
-                            System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
-                            System.out.println("exit"); // termina il client
+                            helper(elenco);
                             break;
 
                         }
@@ -695,23 +644,38 @@ public class MainClassClient {
                 }catch (Exception e) {
 
                     // in caso di eccezione stampo l'help
-                    System.out.println("usage : COMMANDS [ ARGS ...]");
-                    System.out.println("Commands:");
-                    System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
-                    System.out.println(" login <nickUtente> <password>");  //effettua il login
-                    System.out.println(" logout");  // effettua il logout
-                    System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
-                    System.out.println(" lista_amici");  //mostra la lista dei propri amici
-                    System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
-                    System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
-                    System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
-                    System.out.println("exit"); // termina il client
+                    helper2();
 
                 }
 
             }
         }
         input.close();
+    }
+
+    /**
+     * Metodo per inviare info sui comandi
+     */
+    private static void helper2() {
+        System.out.println("usage : COMMANDS [ ARGS ...]");
+        System.out.println("Commands:");
+        System.out.println(" registra_utente <nickUtente> <password>");  // registra l' utente
+        System.out.println(" login <nickUtente> <password>");  //effettua il login
+        System.out.println(" logout");  // effettua il logout
+        System.out.println(" aggiungi_amico <nickAmico>");   // crea relazione di amicizia con nickAmico
+        System.out.println(" lista_amici");  //mostra la lista dei propri amici
+        System.out.println(" sfida <nickUtente> <nickAmico>");  //richiesta di una sfida a nickAmico
+        System.out.println(" mostra_punteggio");  //mostra il punteggio dell’utente
+        System.out.println(" mostra_classifica");   //mostra una classifica degli amici dell’utente (incluso l’utente stesso)
+        System.out.println("exit"); // termina il client
+    }
+
+    /**
+     * @param elenco lista di stringa presa in input
+     */
+    private static void helper(String[] elenco) {
+        System.out.println(elenco[0]);
+        helper2();
     }
 
     /**
@@ -739,7 +703,7 @@ public class MainClassClient {
             clientSocket = new DatagramSocket();
             IPAddress = InetAddress.getByName(host);
         } catch (IOException e) {
-
+            e.printStackTrace();
         }
         byte[] receiveData = new byte[1024];
         DatagramPacket sendPacket;
@@ -749,7 +713,7 @@ public class MainClassClient {
         try {
             clientSocket.send(sendPacket);
         } catch (IOException e) {
-
+            e.printStackTrace();
         }
 
         DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, port);
@@ -758,7 +722,7 @@ public class MainClassClient {
         try {
             clientSocket.receive(receivePacket);
         } catch (IOException e) {
-
+            e.printStackTrace();
         }
 
         String ricevuta = new String(receiveData);

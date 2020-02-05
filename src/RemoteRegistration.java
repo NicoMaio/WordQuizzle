@@ -8,7 +8,7 @@ import java.rmi.RemoteException;
 
 public interface RemoteRegistration extends Remote {
 
-    public String SERVICE_NAME = "Registration";
+    String SERVICE_NAME = "Registration";
     // nome del servizio offerto.
 
     /**
@@ -17,6 +17,6 @@ public interface RemoteRegistration extends Remote {
      * @return 1 se operazione andata a buon fine; 0 altrimenti.
      * @throws RemoteException eccezione che potrebbe essere sollevata.
      */
-    public int registra(String username, String password) throws RemoteException;
+    int registra(String username, String password) throws RemoteException;
 
 }

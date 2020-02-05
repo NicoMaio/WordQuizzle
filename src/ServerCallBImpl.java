@@ -12,7 +12,7 @@ public class ServerCallBImpl extends RemoteObject implements ServerInterface {
     private TreeMap<String,NotifyEventInterface> clients;
     // TreeMap contenente i riferimenti dei clienti per notificare le richieste di sfida.
 
-    public ServerCallBImpl() throws RemoteException {
+    public ServerCallBImpl(){
         super();
         clients = new TreeMap<>();
     }
@@ -20,23 +20,11 @@ public class ServerCallBImpl extends RemoteObject implements ServerInterface {
     /**
      * @param username username dell'utente che si vuole aggiungere a clients.
      * @param ClientInterface interfaccia della classe del cliente che si vuole eseguire in caso di invio notifica di sfida.
-     * @throws RemoteException eccezione che potrebbe essere sollevata.
      */
-    public synchronized void registerForCallback(String username,NotifyEventInterface ClientInterface) throws RemoteException {
+    public synchronized void registerForCallback(String username,NotifyEventInterface ClientInterface){
         if(!clients.containsKey(username)){
             clients.put(username,ClientInterface);
         }
-    }
-
-    /**
-     * @param username username dell'utente che si vuole deregistrare dal servizio di notifiche di sfida.
-     * @param Client interfaccia della classe del cliente che si vuole eliminare dal servizio di notifiche di sfida.
-     * @return 1 se operazione andata a buon fine; 0 altrimenti.
-     * @throws RemoteException eccezione che potrebbe essere sollevata.
-     */
-    public synchronized int unregisterForCallback(String username,NotifyEventInterface Client) throws RemoteException {
-        if(clients.remove(username,Client) ) return 1;
-        return 0;
     }
 
     /**

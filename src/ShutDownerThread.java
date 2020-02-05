@@ -31,7 +31,7 @@ public class ShutDownerThread extends Thread {
                     break;
             }
         }catch (IOException e){
-
+            e.printStackTrace();
         }
 
 

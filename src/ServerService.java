@@ -29,7 +29,7 @@ public class ServerService implements Runnable {
     private int port;
     // porta sulla quale si riceveranno le varie richieste dei client.
 
-    public TreeMap<String, Utente> registeredList;
+    private final TreeMap<String, Utente> registeredList;
     // TreeMap registerdList conterrà tutte le info degli utenti registrati.
 
     private TreeMap<String,SelectionKey> usersList;
@@ -52,13 +52,13 @@ public class ServerService implements Runnable {
                          String fileJsonName,ServerCallBImpl server, Counters counters) {
         this.port = port;
         registeredList = albero;
-        this.fileJsonName = fileJsonName;
+        ServerService.fileJsonName = fileJsonName;
         usersList = online;
         this.counters = counters;
         gamers = new Vector<>();
         LinkedBlockingQueue<Runnable> linkedlist = new LinkedBlockingQueue<>();
         threadPoolExecutor = new ThreadPoolExecutor(0,30,500, TimeUnit.MILLISECONDS,linkedlist);
-        this.server = server;
+        ServerService.server = server;
     }
 
 
@@ -89,7 +89,7 @@ public class ServerService implements Runnable {
 
         } catch (IOException e) {
             e.printStackTrace();
-            saveUsersStats(registeredList);
+            saveUsersStats();
 
             return;
         }
@@ -125,10 +125,8 @@ public class ServerService implements Runnable {
                         client.configureBlocking(false);
 
                         // registro OP_READ ke
-                        if(client != null) {
-                            SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
-                            clientkey.attach(new Worker.Auxiliar("","",0,null));
-                        }
+                        SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
+                        clientkey.attach(new Worker.Auxiliar("","",0,null));
 
 
                     }
@@ -138,10 +136,6 @@ public class ServerService implements Runnable {
                             tryRead(key);
 
                         //key.interestOps(SelectionKey.OP_WRITE);
-                    } else if (key.isWritable()) {
-
-                        makeWrite(key);
-
                     }
                 }
 
@@ -165,9 +159,9 @@ public class ServerService implements Runnable {
                     e.printStackTrace();
                 }
             }
-            saveUsersStats(registeredList);
+            saveUsersStats();
         }catch ( IOException e) {
-            saveUsersStats(registeredList);
+            saveUsersStats();
 
         }
 
@@ -188,7 +182,7 @@ public class ServerService implements Runnable {
 
             aux = (Worker.Auxiliar) key.attachment();
         } catch (ClassCastException e){
-
+            e.printStackTrace();
         }
 
         int bytes= 0;
@@ -208,12 +202,13 @@ public class ServerService implements Runnable {
             }
 
         } else {
+            assert false;
             aux.req.clear();
 
             try{
                 bytes= client.read(aux.req);
             } catch (IOException e){
-
+                e.printStackTrace();
             }
         }
         if(bytes >0) {
@@ -240,19 +235,7 @@ public class ServerService implements Runnable {
 
     }
 
-    private void makeWrite(SelectionKey key){
-        /*SocketChannel client =(SocketChannel) key.channel();
-        Worker.Auxiliar Worker.Auxiliar = (Worker.Auxiliar) key.attachment();
-        try{
-            client.write(Worker.Auxiliar.resp);
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-
-         */
-    }
-
-    public static void saveUsersStats(TreeMap<String, Utente> registeredList){
+    public static void saveUsersStats(){
 
         Set<Map.Entry<String, Utente>> set;
         synchronized (registeredList) {
@@ -302,7 +285,7 @@ public class ServerService implements Runnable {
             outChannel.close();
         } catch (IOException e){
             e.printStackTrace();
-            return;
+
         }
 
     }
