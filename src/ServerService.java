@@ -1,7 +1,7 @@
 /**
  * @author Nicolò Maio
  *
- * Task eseguito dal thread lanciato dal server che gestisce le varie richieste dei client.
+ * Task eseguito dal thread lanciato dal server che gestisce le varie richieste dei client, tramite Selector
  * */
 
 import org.json.simple.JSONArray;
@@ -45,8 +45,10 @@ public class ServerService implements Runnable {
     // ServerCallBImpl usata per gestire le callback lato server in caso di notifiche di sfida.
 
     private static Selector selector;
-    //
+    // Selector per gestire le richieste dei client.
+
     private Counters counters;
+    // Counters contenente i contatori delle sfide degli utenti.
 
     public ServerService(int port, TreeMap<String, Utente> albero, TreeMap<String,SelectionKey> online,
                          String fileJsonName,ServerCallBImpl server, Counters counters) {
@@ -56,11 +58,206 @@ public class ServerService implements Runnable {
         usersList = online;
         this.counters = counters;
         gamers = new Vector<>();
+        ServerService.server = server;
+
+        // imposto ThreadPoolExecutor al quale verranno passate le richieste da svolgere.
         LinkedBlockingQueue<Runnable> linkedlist = new LinkedBlockingQueue<>();
         threadPoolExecutor = new ThreadPoolExecutor(0,30,500, TimeUnit.MILLISECONDS,linkedlist);
-        ServerService.server = server;
+
     }
 
+
+    /**
+     * Metodo run del thread su cui gira il selector.
+     */
+    public void run() {
+
+        System.out.println("Listening for connection on port "+port+" ...");
+
+        ServerSocketChannel serverChannel;
+
+        try {
+
+            // apro connessione
+            serverChannel = ServerSocketChannel.open();
+            ServerSocket ss = serverChannel.socket();
+            InetSocketAddress address = new InetSocketAddress(port);
+
+            ss.bind(address);
+
+            // imposto connessione non bloccante lato server
+            serverChannel.configureBlocking(false);
+
+            // apro selettore
+            selector = Selector.open();
+
+            // registro in selector chiave OP_ACCEPT
+            serverChannel.register(selector,SelectionKey.OP_ACCEPT);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            saveUsersStats();
+
+            return;
+        }
+
+
+        while (!Thread.interrupted()) {
+            try {
+
+                // seleziono set di chiavi
+                selector.select();
+
+                // istanzio iteratore su selected-key set
+                Set<SelectionKey> selectionKeySet = selector.selectedKeys();
+                Iterator<SelectionKey> iterator = selectionKeySet.iterator();
+
+                // scorro iteratore
+                while (iterator.hasNext()) {
+
+                    SelectionKey key = iterator.next();
+                    iterator.remove();
+
+
+                    // se chiave è Acceptable
+                    if (key.isAcceptable()) {
+
+                        // accetto connessione
+                        ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                        SocketChannel client = server.accept();
+
+                        // imposto connessione  non bloccante
+                        client.configureBlocking(false);
+
+                        // registro OP_READ.
+                        SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
+                        clientkey.attach(new Worker.Auxiliar("","",0,null));
+
+
+                    }
+
+                    // se chiave è Readable
+                    if (key.isReadable()) {
+                            tryRead(key);
+
+                        //key.interestOps(SelectionKey.OP_WRITE);
+                    }
+                }
+
+            } catch (IOException e) {
+
+                    System.err.println("Errore: " + e);
+            }
+
+        }
+
+        /* ---------- Protocollo di terminazione ---------- */
+        try {
+            selector.close();
+            serverChannel.close();
+
+            threadPoolExecutor.shutdown();
+            while(!threadPoolExecutor.isTerminated()){
+
+                try {
+                    threadPoolExecutor.awaitTermination(Long.MAX_VALUE,TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
+            saveUsersStats();
+        }catch ( IOException e) {
+            saveUsersStats();
+            e.printStackTrace();
+
+        }
+
+        System.out.println("Chiusura ServerService ...");
+        /* ------------------------------------------------ */
+
+    }
+
+
+    /**
+     * Legge richiesta e la consegna al threadpool.
+     * @param key chiave su cui è stato registrato connessione della prossima richiesta da svolgere.
+     */
+    private void tryRead(SelectionKey key) {
+
+        // seleziono channel e leggo
+        SocketChannel client = (SocketChannel) key.channel();
+        Worker.Auxiliar aux = null;
+
+        try {
+
+            aux = (Worker.Auxiliar) key.attachment();
+        } catch (ClassCastException e){
+            e.printStackTrace();
+        }
+
+        int bytes= 0;
+        if(aux!=null) {
+            try {
+                aux.sa = client.getRemoteAddress();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            aux.req.clear();
+
+            try {
+                bytes = client.read(aux.req);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } else {
+            assert false;
+            aux.req.clear();
+
+            try{
+                bytes= client.read(aux.req);
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+        }
+        if(bytes >0) {
+
+            Worker work = new Worker(registeredList, usersList,key,gamers,counters);
+            threadPoolExecutor.execute(work);
+        }
+    }
+
+    /**
+     * Disabilita le chiavi di due utenti che si stanno sfidando.
+     * @param key1 chiave del primo utente della sfida.
+     * @param key2 chiave del secondo utente della sfida.
+     */
+    public static void dontRead(SelectionKey key1,SelectionKey key2){
+
+        key1.interestOps(SelectionKey.OP_WRITE);
+        key2.interestOps(SelectionKey.OP_WRITE);
+
+    }
+
+    /**
+     * Riattiva le chiavi dei due utenti una volta finita la sfida.
+     * @param key1 chiave del primo utente che ha finito la sfida.
+     * @param key2 chiave del secondo utente che ha finito la sfida.
+     */
+    public static void abilityRead(SelectionKey key1, SelectionKey key2){
+
+        key1.interestOps(SelectionKey.OP_READ);
+        key2.interestOps(SelectionKey.OP_READ);
+
+        selector.wakeup();
+
+    }
+
+    /**
+     * Salva sul file BackupServer.json le info contenute in registeredList.
+     * @param registeredList TreeMap su cui si tiene traccia di tutte le info degli utenti registrati.
+     */
     public static void saveUsersStats(TreeMap<String,Utente> registeredList) {
         Set<Map.Entry<String, Utente>> set;
         synchronized (registeredList) {
@@ -113,181 +310,10 @@ public class ServerService implements Runnable {
         }
     }
 
-
-    public void run() {
-
-        System.out.println("Listening for connection on port "+port+" ...");
-
-        ServerSocketChannel serverChannel;
-        //Selector selector;
-
-        try {
-
-            // apro Worker.Auxiliarnessione
-            serverChannel = ServerSocketChannel.open();
-            ServerSocket ss = serverChannel.socket();
-            InetSocketAddress address = new InetSocketAddress(port);
-
-            ss.bind(address);
-
-            // imposto Worker.Auxiliarnessione non bloccante lato server
-            serverChannel.configureBlocking(false);
-
-            // apro selettore
-            selector = Selector.open();
-
-            // registro in selector chiave OP_ACCEPT
-            serverChannel.register(selector,SelectionKey.OP_ACCEPT);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            saveUsersStats();
-
-            return;
-        }
-
-
-        while (!Thread.interrupted()) {
-            try {
-
-                // seleziono set di chiavi
-                selector.select();
-
-                // istanzio iteratore su selected-key set
-                Set<SelectionKey> selectionKeySet = selector.selectedKeys();
-                Iterator<SelectionKey> iterator = selectionKeySet.iterator();
-
-                // scorro iteratore
-                while (iterator.hasNext()) {
-
-                    SelectionKey key = iterator.next();
-                    iterator.remove();
-
-
-                    // se chiave è Acceptable
-                    if (key.isAcceptable()) {
-
-                        // accetto Worker.Auxiliarnessione
-                        ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                        //server.Worker.AuxiliarfigureBlocking(false);
-
-                        SocketChannel client = server.accept();
-
-                        // imposto Worker.Auxiliarnessione non bloccante
-                        client.configureBlocking(false);
-
-                        // registro OP_READ ke
-                        SelectionKey clientkey = client.register(selector, SelectionKey.OP_READ);
-                        clientkey.attach(new Worker.Auxiliar("","",0,null));
-
-
-                    }
-
-                    // se chiave è Readable
-                    if (key.isReadable()) {
-                            tryRead(key);
-
-                        //key.interestOps(SelectionKey.OP_WRITE);
-                    }
-                }
-
-            } catch (IOException e) {
-
-                    System.err.println("Errore: " + e);
-            }
-
-        }
-
-        try {
-            selector.close();
-            serverChannel.close();
-
-            threadPoolExecutor.shutdown();
-            while(!threadPoolExecutor.isTerminated()){
-
-                try {
-                    threadPoolExecutor.awaitTermination(Long.MAX_VALUE,TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e){
-                    e.printStackTrace();
-                }
-            }
-            saveUsersStats();
-        }catch ( IOException e) {
-            saveUsersStats();
-
-        }
-
-        System.out.println("Chiusura ServerService ...");
-
-    }
-
-
-
-
-    private void tryRead(SelectionKey key) {
-
-        // seleziono channel e leggo
-        SocketChannel client = (SocketChannel) key.channel();
-        Worker.Auxiliar aux = null;
-
-        try {
-
-            aux = (Worker.Auxiliar) key.attachment();
-        } catch (ClassCastException e){
-            e.printStackTrace();
-        }
-
-        int bytes= 0;
-        if(aux!=null) {
-            try {
-                aux.sa = client.getRemoteAddress();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            aux.req.clear();
-
-            try {
-                bytes = client.read(aux.req);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        } else {
-            assert false;
-            aux.req.clear();
-
-            try{
-                bytes= client.read(aux.req);
-            } catch (IOException e){
-                e.printStackTrace();
-            }
-        }
-        if(bytes >0) {
-
-            Worker work = new Worker(registeredList, usersList,key,gamers,counters);
-            threadPoolExecutor.execute(work);
-        }
-    }
-
-    public static void dontRead(SelectionKey key1,SelectionKey key2){
-
-        key1.interestOps(SelectionKey.OP_WRITE);
-        key2.interestOps(SelectionKey.OP_WRITE);
-
-    }
-
-    public static void abilityRead(SelectionKey key1, SelectionKey key2){
-        System.out.println("Riattivate");
-        key1.interestOps(SelectionKey.OP_READ);
-        key2.interestOps(SelectionKey.OP_READ);
-
-        selector.wakeup();
-
-
-    }
-
-    public  void saveUsersStats(){
+    /**
+     * Salva sul file BackupServer.json le info contenute in registeredList.
+     */
+    public void saveUsersStats(){
 
         Set<Map.Entry<String, Utente>> set;
         synchronized (registeredList) {
@@ -341,6 +367,12 @@ public class ServerService implements Runnable {
 
     }
 
+    /**
+     * Serve per notificare la sfida all'utente sfidato tramite RMI CallBack.
+     * @param username username dell'utente a cui si notificherà la sfida.
+     * @param value la porta che dovrà usare l'utente per rispondere alla richiesta inviata in UDP.
+     * @throws RemoteException eccezione che potrebbe essere sollevata.
+     */
     public static void callBack(String username,int value) throws RemoteException {
 
         server.update(value,username);

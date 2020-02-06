@@ -168,47 +168,52 @@ public class MainClassClient {
 
                         case "login": {
                             // gestisco operazione di login
-                            username = elenco[1];
-                            String password = elenco[2];
-
-                            Runtime.getRuntime().addShutdownHook(new Thread(new ShutDownerThread(username,client)));
-
-
-                            String toServer = "login/" + username + "/" + password;
-
-                            ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
-
-                            client.write(buffer);
-                            buffer.clear();
-                            buffer.flip();
-
-                            String response = "";
+                            if(username != null){
+                                System.out.println("Un altro utente si è già loggato in questa sessione");
+                            } else {
 
 
-                            ByteBuffer fer = ByteBuffer.allocate(1024);
+                                username = elenco[1];
+                                String password = elenco[2];
 
-                            client.read(fer);
-                            fer.flip();
+                                Runtime.getRuntime().addShutdownHook(new Thread(new ShutDownerThread(username, client)));
 
-                            response += StandardCharsets.UTF_8.decode(fer).toString();
 
-                            switch (response) {
-                                case "-2":
-                                    System.out.println("Username errato");
-                                    break;
-                                case "-1":
-                                    System.out.println("Password errata");
-                                    break;
-                                case "0":
-                                    System.out.println("Login già effettuato");
-                                    break;
-                                case "1":
-                                    System.out.println("Login eseguito con successo");
-                                    // registro l'utente per ricevere notifiche in callback in caso di richiesta di sfida
-                                    server.registerForCallback(username, stub);
-                                    break;
+                                String toServer = "login/" + username + "/" + password;
+
+                                ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
+
+                                client.write(buffer);
+                                buffer.clear();
+                                buffer.flip();
+
+                                String response = "";
+
+
+                                ByteBuffer fer = ByteBuffer.allocate(1024);
+
+                                client.read(fer);
+                                fer.flip();
+
+                                response += StandardCharsets.UTF_8.decode(fer).toString();
+
+                                switch (response) {
+                                    case "-2":
+                                        System.out.println("Username errato");
+                                        break;
+                                    case "-1":
+                                        System.out.println("Password errata");
+                                        break;
+                                    case "0":
+                                        System.out.println("Login già effettuato");
+                                        break;
+                                    case "1":
+                                        System.out.println("Login eseguito con successo");
+                                        // registro l'utente per ricevere notifiche in callback in caso di richiesta di sfida
+                                        server.registerForCallback(username, stub);
+                                        break;
+                                }
                             }
-
                         }
                         break;
                         case "logout": {
@@ -442,6 +447,8 @@ public class MainClassClient {
                                         int i = 1;
                                         System.out.println("Via alla sfida di traduzione!");
                                         System.out.println("Avete 60 secondi per tradurre correttamente " + countWord + " parole.");
+                                        System.out.println("Per lasciare vuota una risposta invia uno spazio...");
+
 
                                         boolean stayHere = false;
 
@@ -546,6 +553,7 @@ public class MainClassClient {
                                         try {
                                             System.out.println("Via alla sfida di traduzione!");
                                             System.out.println("Avete 60 secondi per tradurre correttamente " + countWord + " parole.");
+                                            System.out.println("Per lasciare vuota una risposta invia uno spazio...");
 
                                             while (time.isAlive() && !stayHere) {
                                                 System.out.println("Challenge " + i + "/" + (countWord) + ": " + nextWord);
@@ -734,7 +742,7 @@ public class MainClassClient {
         timeout.start();
 
         System.out.println(elenco[0]);
-
+        System.out.println("Hai 30 secondi per accettare la sfida");
         System.out.println("1. accetta sfida");
         System.out.println("2. rifiuta sfida");
 
