@@ -16,6 +16,7 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.rmi.ConnectException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -76,8 +77,13 @@ public class MainClassClient {
         /* ---------------- Imposto servizio RMI per operazione di registrazione ---------------- */
         int PORT_FOR_RSERVICE = 9999;
         Registry reg = LocateRegistry.getRegistry(host, PORT_FOR_RSERVICE);
-
-        RemoteRegistration registration = (RemoteRegistration) reg.lookup(RemoteRegistration.SERVICE_NAME);
+        RemoteRegistration registration = null;
+        try {
+            registration = (RemoteRegistration) reg.lookup(RemoteRegistration.SERVICE_NAME);
+        } catch (ConnectException c){
+            System.err.println("Server non raggiungibile, riprova più tardi.");
+            System.exit(-1);
+        }
         /* -------------------------------------------------------------------------------------- */
 
         /* ---------------- Imposto servizio RMI per operazione di callback in caso di richiesta per sfida ---------------- */
