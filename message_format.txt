@@ -1,0 +1,11 @@
+Formato dei vari messaggi inviati da client a server:
+- login/Username/Password;
+- logout/Username;
+- aggiungi_amico/Username/UsernameAmico;
+- lista_amici/Username;
+- mostra_punteggio/Username;
+- mostra_classifica/Username;
+- sfida/Username/UsernameAmico.
+
+Una volta arrivata notifica di sfida un client per accettarla dovrà inserire da riga di comando 1 altrimenti inserire 2, entro la fine del timeout di 30 secondi.
+Se il timeout scade al momento della scelta verrà mostrato un opportuno messaggio d'errore.

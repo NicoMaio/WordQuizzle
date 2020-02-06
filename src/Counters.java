@@ -16,6 +16,7 @@ public class Counters {
     * int[1] = parole sbagliate;
     * int[2] = parole lasciate vuote;
     * int[3] = punteggio attuale;
+    * int[4] = indica se la sfida è stata completata.
     *
     * */
 
