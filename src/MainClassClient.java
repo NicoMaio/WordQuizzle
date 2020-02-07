@@ -179,13 +179,12 @@ public class MainClassClient {
                             } else {
 
 
-                                username = elenco[1];
                                 String password = elenco[2];
 
-                                Runtime.getRuntime().addShutdownHook(new Thread(new ShutDownerThread(username, client)));
+                                Runtime.getRuntime().addShutdownHook(new Thread(new ShutDownerThread(elenco[1], client)));
 
 
-                                String toServer = "login/" + username + "/" + password;
+                                String toServer = "login/" + elenco[1] + "/" + password;
 
                                 ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
 
@@ -216,6 +215,8 @@ public class MainClassClient {
                                     case "1":
                                         System.out.println("Login eseguito con successo");
                                         // registro l'utente per ricevere notifiche in callback in caso di richiesta di sfida
+                                        username = elenco[1];
+
                                         server.registerForCallback(username, stub);
                                         break;
                                 }
@@ -247,6 +248,7 @@ public class MainClassClient {
                                         System.out.println("Logout fallito");
                                         break;
                                 }
+                                username = null;
                             }
 
                         }
@@ -310,10 +312,11 @@ public class MainClassClient {
                                 try {
                                     jsonArray = (JSONArray) parser.parse(risposta);
 
-                                    Iterator<JSONObject> iterator = jsonArray.iterator();
+                                    Iterator iterator =  jsonArray.iterator();
                                     StringBuilder result = new StringBuilder();
                                     while (iterator.hasNext()) {
-                                        JSONObject obj = iterator.next();
+                                        Object ok = iterator.next();
+                                        JSONObject obj = (JSONObject) ok;
                                         String utente = (String) obj.get("username");
                                         result.append(utente);
                                         if (iterator.hasNext()) {

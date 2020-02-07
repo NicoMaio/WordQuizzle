@@ -260,9 +260,8 @@ public class ServerService implements Runnable {
      */
     public static void saveUsersStats(TreeMap<String,Utente> registeredList) {
         Set<Map.Entry<String, Utente>> set;
-        synchronized (registeredList) {
-            set = registeredList.entrySet();
-        }
+        set = registeredList.entrySet();
+
         Iterator<Map.Entry<String, Utente>> iterator= set.iterator();
 
         JSONArray array= new JSONArray();

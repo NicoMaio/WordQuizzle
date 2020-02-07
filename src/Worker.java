@@ -333,6 +333,7 @@ public class Worker implements Runnable {
                         array.add(obj);
                     }
 
+
                     String rispo = array.toJSONString();
                     Auxiliar con5 = (Auxiliar)key.attachment();
 

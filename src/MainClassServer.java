@@ -125,17 +125,6 @@ public class MainClassServer {
 
         thread.start();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                thread.interrupt();
-
-                thread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            System.out.println("Server terminato...");
-            System.exit(1);
-        }));
 
         /*  -------- Protocollo di terminazione -------- */
         boolean term = false;
