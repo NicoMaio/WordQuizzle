@@ -227,7 +227,7 @@ public class MainClassClient {
 
                             // gestisco operazione di logout
                             if(username== null){
-                                System.out.println("Need a login before");
+                                System.out.println("Devi eseguire prima login");
                             } else {
                                 String toServer = "logout/" + username;
 
@@ -258,7 +258,7 @@ public class MainClassClient {
 
                             // gestisco operazione di aggiunta amico
                             if(username== null){
-                                System.out.println("Need a login before");
+                                System.out.println("Devi eseguire prima login");
                             } else {
                                 String friend = elenco[1];
 
@@ -293,7 +293,7 @@ public class MainClassClient {
 
                             // gestisco operazione di richiesta lista amici
                             if(username== null){
-                                System.out.println("Need a login before");
+                                System.out.println("Devi eseguire prima login");
                             } else {
                                 String toServer = "lista_amici/" + username;
 
@@ -336,7 +336,7 @@ public class MainClassClient {
 
                             // gestisco operazione di richiesta mostra punteggio dell'utente appena loggato
                             if(username== null){
-                                System.out.println("Need a login before");
+                                System.out.println("Devi eseguire prima login");
                             } else {
                                 String toServer = "mostra_punteggio/" + username;
                                 ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
@@ -356,7 +356,7 @@ public class MainClassClient {
 
                             // gestisco operazione di mostra classifica dell'utente loggato e dei suoi amici.
                             if(username== null){
-                                System.out.println("Need a login before");
+                                System.out.println("Devi eseguire prima login");
                             } else {
                                 String toServer = "mostra_classifica/" + username;
                                 ByteBuffer buffer = ByteBuffer.wrap(toServer.getBytes());
@@ -399,7 +399,7 @@ public class MainClassClient {
 
                             // gestisco operazione di invio richiesta di sfida
                             if (username == null) {
-                                System.out.println("Need a login before");
+                                System.out.println("Devi eseguire prima login");
                             } else {
                                 String friend = elenco[1];
 
@@ -412,12 +412,10 @@ public class MainClassClient {
 
                                 fer.flip();
                                 String risposta = "" + StandardCharsets.UTF_8.decode(fer).toString();
-                                //System.out.println(risposta);
 
                                 if (risposta.contains("Scrivi")) {
                                     String[] lista = risposta.split(":");
                                     int newport = Integer.parseInt(lista[1]);
-                                    //System.out.println("nuova porta: " + newport);
                                     DatagramSocket clientSocket;
                                     InetAddress IPAddress;
                                     clientSocket = new DatagramSocket();
@@ -431,7 +429,7 @@ public class MainClassClient {
                                     DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, newport);
 
                                     clientSocket.send(sendPacket);
-                                    //System.out.println(new String(sendData));
+
                                     byte[] receiveData = new byte[1024];
 
                                     DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length, IPAddress, newport);
@@ -547,7 +545,6 @@ public class MainClassClient {
                                     client.read(reader);
                                     reader.flip();
                                     String fina = StandardCharsets.UTF_8.decode(reader).toString();
-                                    //System.out.println(fina);
                                     if (fina.contains("parola") || fina.contains("60000")) {
                                         String[] el = fina.split("/");
                                         int timeoutt = Integer.parseInt(el[0]);
